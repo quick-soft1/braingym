@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logic & Micro-Strategy Builder</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --card-bg: #2b2b3d;
+            --text-color: #cdd6f4;
+            --tile-bg: #313244;
+            --accent: #cba6f7;
+            --player-color: #89b4fa;
+            --goal-color: #f9e2af;
+            --enemy-color: #f38ba8;
+            --wall-color: #45475a;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 16px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            transition: background 0.3s ease;
+        }
+        .game-card {
+            background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            width: 100%; max-width: 520px; padding: 24px;
+            text-align: center; border: 2px solid #45475a; position: relative;
+        }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        h1 { font-size: 20px; margin: 0; color: var(--accent); }
+        .header-btns { display: flex; gap: 8px; }
+        .icon-btn {
+            background: #f38ba8; color: #11111b; border: none; border-radius: 50%;
+            width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+            font-weight: bold; display: flex; align-items: center; justify-content: center;
+        }
+        .replay-btn { background: #fab387; }
+        .theme-btn { background: #f9e2af; }
+        .rules-btn { background: #89b4fa; }
+
+        .status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #181825; padding: 10px 16px; border-radius: 12px;
+            font-weight: bold; margin-bottom: 12px; font-size: 14px;
+        }
+        
+        .level-banner {
+            background: #fab387; color: #11111b; font-weight: bold;
+            padding: 8px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;
+        }
+
+        .speed-control-bar {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: #181825; padding: 8px 12px; border-radius: 12px;
+            margin-bottom: 12px; font-size: 13px; font-weight: bold;
+        }
+        .speed-select {
+            background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+            border-radius: 6px; padding: 4px 8px; font-size: 13px; font-weight: bold;
+            cursor: pointer; outline: none;
+        }
+
+        /* 5x5 Grid Board */
+        .board-container {
+            display: flex; justify-content: center; margin-bottom: 16px;
+        }
+        .grid-board {
+            display: grid; grid-template-columns: repeat(5, 54px); grid-template-rows: repeat(5, 54px);
+            gap: 6px; background: #181825; padding: 10px; border-radius: 16px; border: 2px solid #45475a;
+        }
+        .grid-cell {
+            background: var(--tile-bg); border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; position: relative; transition: background 0.2s;
+        }
+        .grid-cell.wall { background: var(--wall-color); }
+        .grid-cell.player { background: rgba(137, 180, 250, 0.3); border: 2px solid var(--player-color); }
+        .grid-cell.goal { background: rgba(249, 226, 175, 0.3); border: 2px solid var(--goal-color); }
+
+        /* Sequence Queue & Action Controls */
+        .queue-container {
+            background: #181825; border-radius: 12px; padding: 10px; margin-bottom: 16px;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+        }
+        .queue-title { font-size: 12px; font-weight: bold; color: #a6adc8; text-transform: uppercase; }
+        .queue-slots { display: flex; gap: 8px; min-height: 44px; align-items: center; }
+        .queue-slot {
+            width: 40px; height: 40px; background: #313244; border: 2px dashed #45475a;
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: bold; color: var(--accent);
+        }
+        .queue-slot.filled { border-style: solid; border-color: var(--accent); background: #45475a; }
+
+        .dpad-container {
+            display: grid; grid-template-columns: repeat(3, 50px); gap: 8px;
+            justify-content: center; margin-bottom: 16px;
+        }
+        .dpad-btn {
+            width: 50px; height: 50px; background: #313244; color: var(--text-color);
+            border: 2px solid #45475a; border-radius: 12px; font-size: 20px;
+            font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .dpad-btn:active { transform: scale(0.95); background: var(--accent); color: #11111b; }
+        .dpad-btn.action-clear { background: #f38ba8; color: #11111b; font-size: 12px; font-weight: bold; }
+
+        .btn-primary {
+            background: #a6e3a1; color: #11111b; border: none; padding: 14px 32px;
+            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 0px #74c7ec; width: 100%;
+        }
+        .btn-primary:disabled { background: #585b70; box-shadow: none; cursor: not-allowed; color: #a6adc8; }
+
+        /* Modal */
+        .modal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 17, 27, 0.95); border-radius: 24px; padding: 20px;
+            z-index: 100; flex-direction: column; justify-content: space-between; text-align: left;
+        }
+        .modal.active { display: flex; }
+        .modal h2 { color: #89b4fa; margin-top: 0; text-align: center; }
+        .modal-body { font-size: 14px; line-height: 1.5; color: #cdd6f4; }
+        .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .theme-btn-opt {
+            background: #313244; color: #cdd6f4; border: 2px solid #45475a;
+            padding: 10px; border-radius: 12px; font-weight: bold; cursor: pointer; text-align: center;
+        }
+        .close-btn {
+            background: #f38ba8; color: #11111b; border: none; padding: 12px;
+            border-radius: 12px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px;
+        }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<div class="game-card">
+    <div class="header-bar">
+        <h1>♟️ Micro-Strategy</h1>
+        <div class="header-btns">
+            <button class="icon-btn replay-btn" onclick="resetLevel()" title="Reset Level">🔄</button>
+            <button class="icon-btn theme-btn" onclick="toggleModal('theme-modal', true)" title="Themes">🎨</button>
+            <button class="icon-btn rules-btn" onclick="toggleModal('rules-modal', true)" title="Rules">📖</button>
+            <button class="icon-btn" onclick="toggleAudio(event)" id="sound-toggle">🔊</button>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="score-text">⭐ Round: 1/30</span>
+        <span id="lives-text">❤️ ❤️ ❤️</span>
+        <span id="level-text">Lvl 1: Basic 3-Step</span>
+    </div>
+
+    <div class="level-banner" id="level-banner">Plan 3 moves per turn to reach the Star!</div>
+
+    <div class="speed-control-bar">
+        <span>⏱️ Sim Speed:</span>
+        <select id="speed-select" class="speed-select">
+            <option value="400">Normal (0.4s/step)</option>
+            <option value="250">Fast (0.25s/step)</option>
+            <option value="150">Instant (0.15s/step)</option>
+        </select>
+    </div>
+
+    <div class="board-container">
+        <div class="grid-board" id="grid-board"></div>
+    </div>
+
+    <div class="queue-container">
+        <div class="queue-title">Planned Move Sequence</div>
+        <div class="queue-slots" id="queue-slots"></div>
+    </div>
+
+    <div class="dpad-container">
+        <div></div>
+        <button class="dpad-btn" onclick="addMove('UP')">⬆️</button>
+        <div></div>
+        <button class="dpad-btn" onclick="addMove('LEFT')">⬅️</button>
+        <button class="dpad-btn action-clear" onclick="clearMoves()">CLEAR</button>
+        <button class="dpad-btn" onclick="addMove('RIGHT')">➡️</button>
+        <div></div>
+        <button class="dpad-btn" onclick="addMove('DOWN')">⬇️</button>
+        <div></div>
+    </div>
+
+    <button class="btn-primary" id="exec-btn" onclick="executeSequence()" disabled>Execute Sequence 🚀</button>
+
+    <!-- Theme Modal -->
+    <div class="modal" id="theme-modal">
+        <div>
+            <h2>🎨 Select Theme</h2>
+            <div class="theme-grid">
+                <button class="theme-btn-opt" onclick="setTheme('dark')">Midnight Dark</button>
+                <button class="theme-btn-opt" onclick="setTheme('neon')">Neon Cyber</button>
+                <button class="theme-btn-opt" onclick="setTheme('forest')">Emerald Forest</button>
+                <button class="theme-btn-opt" onclick="setTheme('candy')">Sweet Candy</button>
+            </div>
+        </div>
+        <button class="close-btn" onclick="toggleModal('theme-modal', false)">Close</button>
+    </div>
+
+    <!-- Rules Modal -->
+    <div class="modal" id="rules-modal">
+        <div>
+            <h2>📖 How to Play</h2>
+            <div class="modal-body">
+                <p><strong>🎯 Objective:</strong> Reach the Star (⭐) without hitting Walls (🧱) or Guards (🤖).</p>
+                <p><strong>🧠 Step-by-Step Execution:</strong></p>
+                <ul>
+                    <li>Queue your directional moves using the arrow buttons.</li>
+                    <li>Press <strong>EXECUTE</strong> to walk your sequence.</li>
+                    <li>Take multiple turns across the grid until you land on the Star!</li>
+                </ul>
+            </div>
+        </div>
+        <button class="close-btn" onclick="toggleModal('rules-modal', false)">Got It! 👍</button>
+    </div>
+</div>
+
+<script>
+    let audioCtx = null, isMuted = false;
+    const GRID_SIZE = 5;
+    let roundNumber = 1, lives = 3, isSimulating = false;
+    let maxQueueLength = 3;
+
+    let playerPos = { r: 0, c: 0 };
+    let goalPos = { r: 4, c: 4 };
+    let guards = [];
+    let walls = [];
+    let plannedMoves = [];
+
+    function unlockAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function toggleAudio(e) {
+        if (e) e.stopPropagation();
+        unlockAudio();
+        isMuted = !isMuted;
+        document.getElementById('sound-toggle').innerText = isMuted ? '🔇' : '🔊';
+    }
+
+    function toggleModal(id, show) {
+        document.getElementById(id).classList.toggle('active', show);
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15) {
+        if (isMuted) return;
+        unlockAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    const themes = {
+        dark: { bg: '#1e1e2e', card: '#2b2b3d', text: '#cdd6f4', tile: '#313244', accent: '#cba6f7' },
+        neon: { bg: '#090a0f', card: '#121526', text: '#00f6ff', tile: '#1a2238', accent: '#ffe600' },
+        forest: { bg: '#1a2f23', card: '#243e2e', text: '#e8f5e9', tile: '#2e523c', accent: '#aed581' },
+        candy: { bg: '#2d1b2e', card: '#3d243f', text: '#f8bbd0', tile: '#523055', accent: '#ffd180' }
+    };
+
+    function setTheme(key) {
+        const t = themes[key];
+        document.documentElement.style.setProperty('--bg-color', t.bg);
+        document.documentElement.style.setProperty('--card-bg', t.card);
+        document.documentElement.style.setProperty('--text-color', t.text);
+        document.documentElement.style.setProperty('--tile-bg', t.tile);
+        document.documentElement.style.setProperty('--accent', t.accent);
+        toggleModal('theme-modal', false);
+    }
+
+    function setupLevel() {
+        plannedMoves = [];
+        isSimulating = false;
+        
+        if (roundNumber <= 10) {
+            maxQueueLength = 3;
+            document.getElementById('level-banner').innerText = "Plan 3 moves per turn to reach the Star!";
+            document.getElementById('level-text').innerText = "Lvl 1: Basic 3-Step";
+        } else if (roundNumber <= 20) {
+            maxQueueLength = 4;
+            document.getElementById('level-banner').innerText = "Level 2: Guard Patrols (4-Step Moves)";
+            document.getElementById('level-text').innerText = "Lvl 2: Guard Patrols";
+        } else {
+            maxQueueLength = 5;
+            document.getElementById('level-banner').innerText = "Level 3: Maze & Patrols (5-Step Moves)";
+            document.getElementById('level-text').innerText = "Lvl 3: Master Planner";
+        }
+
+        playerPos = { r: 0, c: 0 };
+        goalPos = { r: 4, c: 4 };
+        walls = [];
+        guards = [];
+
+        if (roundNumber > 3) walls.push({ r: 2, c: 2 }, { r: 1, c: 3 });
+        if (roundNumber > 8) guards.push({ r: 2, c: 0, axis: 'H', dir: 1 });
+        if (roundNumber > 15) guards.push({ r: 0, c: 3, axis: 'V', dir: 1 });
+        if (roundNumber > 22) walls.push({ r: 3, c: 1 }, { r: 0, c: 4 });
+
+        updateQueueUI();
+        renderBoard();
+        updateLives();
+    }
+
+    function renderBoard() {
+        const board = document.getElementById('grid-board');
+        board.innerHTML = '';
+
+        for (let r = 0; r < GRID_SIZE; r++) {
+            for (let c = 0; c < GRID_SIZE; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+
+                const isWall = walls.some(w => w.r === r && w.c === c);
+                const isPlayer = playerPos.r === r && playerPos.c === c;
+                const isGoal = goalPos.r === r && goalPos.c === c;
+                const isGuard = guards.some(g => g.r === r && g.c === c);
+
+                if (isWall) { cell.classList.add('wall'); cell.innerText = '🧱'; }
+                else if (isPlayer) { cell.classList.add('player'); cell.innerText = '🔵'; }
+                else if (isGoal) { cell.classList.add('goal'); cell.innerText = '⭐'; }
+                else if (isGuard) { cell.innerText = '🤖'; }
+
+                board.appendChild(cell);
+            }
+        }
+    }
+
+    function updateQueueUI() {
+        const container = document.getElementById('queue-slots');
+        container.innerHTML = '';
+
+        for (let i = 0; i < maxQueueLength; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'queue-slot';
+            if (i < plannedMoves.length) {
+                slot.classList.add('filled');
+                const arrows = { UP: '⬆️', DOWN: '⬇️', LEFT: '⬅️', RIGHT: '➡️' };
+                slot.innerText = arrows[plannedMoves[i]];
+            }
+            container.appendChild(slot);
+        }
+
+        document.getElementById('exec-btn').disabled = plannedMoves.length !== maxQueueLength || isSimulating;
+    }
+
+    function addMove(dir) {
+        if (isSimulating || plannedMoves.length >= maxQueueLength) return;
+        playTone(400, 'sine', 0.08);
+        plannedMoves.push(dir);
+        updateQueueUI();
+    }
+
+    function clearMoves() {
+        if (isSimulating) return;
+        playTone(250, 'sine', 0.1);
+        plannedMoves = [];
+        updateQueueUI();
+    }
+
+    function executeSequence() {
+        if (plannedMoves.length !== maxQueueLength || isSimulating) return;
+        isSimulating = true;
+        document.getElementById('exec-btn').disabled = true;
+
+        const speed = parseInt(document.getElementById('speed-select').value);
+        let step = 0;
+
+        const interval = setInterval(() => {
+            if (step >= plannedMoves.length) {
+                clearInterval(interval);
+                checkEndState();
+                return;
+            }
+
+            const m = plannedMoves[step];
+            if (m === 'UP' && playerPos.r > 0) playerPos.r--;
+            if (m === 'DOWN' && playerPos.r < GRID_SIZE - 1) playerPos.r++;
+            if (m === 'LEFT' && playerPos.c > 0) playerPos.c--;
+            if (m === 'RIGHT' && playerPos.c < GRID_SIZE - 1) playerPos.c++;
+
+            guards.forEach(g => {
+                if (g.axis === 'H') {
+                    g.c += g.dir;
+                    if (g.c <= 0 || g.c >= GRID_SIZE - 1) g.dir *= -1;
+                } else {
+                    g.r += g.dir;
+                    if (g.r <= 0 || g.r >= GRID_SIZE - 1) g.dir *= -1;
+                }
+            });
+
+            playTone(520, 'triangle', 0.1);
+            renderBoard();
+
+            const hitWall = walls.some(w => w.r === playerPos.r && w.c === playerPos.c);
+            const hitGuard = guards.some(g => g.r === playerPos.r && g.c === playerPos.c);
+
+            if (hitWall || hitGuard) {
+                clearInterval(interval);
+                handleFailure(hitWall ? "Hit Wall!" : "Caught by Guard!");
+                return;
+            }
+
+            step++;
+        }, speed);
+    }
+
+    function checkEndState() {
+        if (playerPos.r === goalPos.r && playerPos.c === goalPos.c) {
+            playTone(750, 'sine', 0.25);
+            roundNumber++;
+            if (roundNumber > 30) {
+                gameVictory();
+            } else {
+                document.getElementById('level-banner').innerText = "🎉 Star Reached! Next Round...";
+                setTimeout(setupLevel, 1000);
+            }
+        } else {
+            // Turn completed safely! Allow player to plan next turn
+            isSimulating = false;
+            plannedMoves = [];
+            updateQueueUI();
+            document.getElementById('level-banner').innerText = "📍 Turn complete! Plan your next moves.";
+        }
+    }
+
+    function handleFailure(reason) {
+        playTone(140, 'sawtooth', 0.3);
+        lives--;
+        updateLives();
+
+        if (lives > 0) {
+            document.getElementById('level-banner').innerText = `❌ ${reason} Resetting level...`;
+            setTimeout(setupLevel, 1200);
+        } else {
+            gameOver();
+        }
+    }
+
+    function updateLives() {
+        let h = '';
+        for (let i = 0; i < 3; i++) h += i < lives ? '❤️ ' : '🖤 ';
+        document.getElementById('lives-text').innerText = h.trim();
+        document.getElementById('score-text').innerText = `⭐ Round: ${roundNumber}/30`;
+    }
+
+    function resetLevel() {
+        setupLevel();
+    }
+
+    function gameVictory() {
+        document.getElementById('level-banner').innerText = "🏆 MASTERED ALL 30 STRATEGY LEVELS!";
+    }
+
+    function gameOver() {
+        document.getElementById('level-banner').innerText = "💥 GAME OVER! Out of lives.";
+    }
+
+    setupLevel();
+</script>
+
+</body>
+</html>

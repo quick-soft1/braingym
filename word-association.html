@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual-Task Balance & Word Association</title>
+    <style>
+        :root {
+            --bg-color: #121824;
+            --card-bg: #1e2638;
+            --text-color: #f0f4fc;
+            --accent: #ffb703;
+            --correct: #2a9d8f;
+            --incorrect: #e63946;
+            --cell-bg: #2b354a;
+            --active-border: #4cc9f0;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 16px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+
+        .game-card {
+            background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+            width: 100%; max-width: 650px; padding: 24px;
+            text-align: center; border: 2px solid #3a4763; position: relative;
+        }
+
+        .header-bar {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;
+        }
+
+        h1 { font-size: 20px; color: var(--accent); margin: 0; display: flex; align-items: center; gap: 6px; }
+        
+        .header-controls { display: flex; gap: 8px; align-items: center; }
+
+        select.lang-select {
+            background: #2b354a; color: #fff; border: 2px solid #4a5a7b;
+            padding: 8px 12px; border-radius: 12px; font-size: 15px; font-weight: bold; cursor: pointer;
+        }
+
+        .icon-btn {
+            background: #2b354a; color: #fff; border: 2px solid #4a5a7b;
+            border-radius: 50%; width: 42px; height: 42px; font-size: 18px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+        .icon-btn:active { transform: scale(0.95); }
+
+        .meta-info {
+            display: flex; justify-content: space-between; font-size: 14px; color: #a0aec0; margin-bottom: 12px; font-weight: bold;
+        }
+        .lives-display { color: var(--incorrect); letter-spacing: 2px; }
+
+        .progress-bar-container {
+            width: 100%; background: #121824; border-radius: 10px; height: 12px;
+            margin: 8px 0 16px 0; overflow: hidden; border: 1px solid #3a4763;
+        }
+        .progress-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, #4cc9f0, var(--accent));
+            transition: width 0.3s ease;
+        }
+
+        .timer-bar-container {
+            width: 100%; background: #1a2333; border-radius: 8px; height: 10px;
+            margin-bottom: 16px; overflow: hidden; border: 1px solid #4a5a7b;
+        }
+        .timer-fill {
+            height: 100%; width: 100%; background: #4cc9f0;
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+
+        .banner {
+            background: #2b354a; border-radius: 12px; padding: 12px;
+            font-size: 15px; font-weight: bold; margin-bottom: 16px;
+            border: 2px solid var(--accent); color: var(--accent); line-height: 1.4;
+        }
+
+        .pose-card {
+            background: rgba(76, 201, 240, 0.1); border: 2px dashed #4cc9f0;
+            border-radius: 16px; padding: 16px; margin-bottom: 16px; text-align: left;
+        }
+        .pose-title {
+            font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #4cc9f0; font-weight: bold; margin-bottom: 6px;
+        }
+        .pose-text { font-size: 17px; font-weight: bold; color: #fff; line-height: 1.4; }
+
+        .task-card {
+            background: #121824; border: 2px solid #3a4763; border-radius: 16px;
+            padding: 20px; text-align: left; margin-bottom: 16px;
+        }
+        .task-title { font-size: 18px; font-weight: bold; color: var(--accent); margin-bottom: 8px; }
+
+        .options-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+        .option-btn {
+            background: #2b354a; border: 2px solid #4a5a7b; border-radius: 12px;
+            padding: 14px 18px; font-size: 16px; font-weight: bold; color: #fff;
+            cursor: pointer; text-align: left; transition: all 0.15s ease;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .option-btn:hover { border-color: var(--active-border); background: #35425e; }
+        .option-btn.correct { background: rgba(42, 157, 143, 0.3); border-color: var(--correct); color: #a6e3a1; }
+        .option-btn.incorrect { background: rgba(230, 57, 70, 0.3); border-color: var(--incorrect); color: #f38ba8; }
+
+        .btn {
+            background: var(--accent); color: #121824; border: none; padding: 14px 28px;
+            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 0 #c78f00; transition: transform 0.1s; width: 100%;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
+
+        .modal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(18, 24, 36, 0.96); border-radius: 24px; padding: 24px;
+            z-index: 100; flex-direction: column; justify-content: space-between; text-align: left;
+        }
+        .modal.active { display: flex; }
+        .modal h2 { color: var(--accent); margin-top: 0; text-align: center; font-size: 20px; }
+        .modal-body { font-size: 14px; line-height: 1.6; color: #cdd6f4; overflow-y: auto; }
+        .modal-body ul { padding-left: 20px; margin-top: 6px; }
+        .modal-body li { margin-bottom: 8px; }
+        .close-btn {
+            background: #e63946; color: #fff; border: none; padding: 12px;
+            border-radius: 12px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 12px; font-size: 16px;
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<div class="game-card">
+    <div class="header-bar">
+        <h1 id="app-title">⚖️ Dual-Task Balance</h1>
+        <div class="header-controls">
+            <select class="lang-select" id="lang-select" onchange="changeLanguage()">
+                <option value="en" selected>🌐 English</option>
+                <option value="hi">🌐 हिन्दी (Hindi)</option>
+                <option value="es">🌐 Español</option>
+            </select>
+            <button class="icon-btn" onclick="toggleModal(true)" title="Instructions">📖</button>
+            <button class="icon-btn" id="mute-btn" onclick="toggleMute(event)" title="Toggle Sound">🔊</button>
+        </div>
+    </div>
+
+    <div class="meta-info">
+        <span id="round-lbl">Round 1 / 50</span>
+        <span id="lives-lbl" class="lives-display">❤️ ❤️ ❤️</span>
+        <span id="difficulty-lbl">Difficulty: Easy</span>
+    </div>
+
+    <div class="progress-bar-container">
+        <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="banner" id="status-banner">Hold a chair if needed for safety! Press Start to begin.</div>
+
+    <div id="game-section">
+        <div class="pose-card" id="pose-box">
+            <div class="pose-title" id="pose-header">🧘 Physical Balance Pose</div>
+            <div class="pose-text" id="pose-instruction">Stand tall on both feet with hands relaxed at sides.</div>
+        </div>
+
+        <div class="timer-bar-container hidden" id="timer-container">
+            <div class="timer-fill" id="timer-fill"></div>
+        </div>
+
+        <div class="task-card" id="task-box">
+            <div class="task-title" id="task-prompt">Word Association Task</div>
+            <div style="font-size: 15px; color: #a0aec0;" id="task-subtext">Click 'Begin Challenge' to start.</div>
+        </div>
+
+        <div class="options-grid hidden" id="options-container"></div>
+    </div>
+
+    <button class="btn" id="main-btn" onclick="handleMainAction()">Begin Challenge 🎯</button>
+
+    <div class="modal" id="instructions-modal">
+        <div>
+            <h2 id="modal-title">📖 How to Play</h2>
+            <div class="modal-body" id="modal-content"></div>
+        </div>
+        <button class="close-btn" onclick="toggleModal(false)" id="modal-close-btn">Got It! 👍</button>
+    </div>
+</div>
+
+<script>
+    const TOTAL_ROUNDS = 50;
+    let audioCtx = null;
+    let isMuted = false;
+    let synth = window.speechSynthesis;
+    let availableVoices = [];
+
+    function populateVoices() {
+        if (!synth) return;
+        availableVoices = synth.getVoices();
+    }
+    populateVoices();
+    if (synth && synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = populateVoices;
+    }
+
+    function stopAudio() {
+        if (synth) {
+            try { synth.cancel(); } catch(e) {}
+        }
+    }
+
+    function unlockAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function toggleMute(e) {
+        if (e) e.stopPropagation();
+        unlockAudio();
+        isMuted = !isMuted;
+        document.getElementById('mute-btn').innerText = isMuted ? '🔇' : '🔊';
+        if (isMuted) stopAudio();
+    }
+
+    function toggleModal(show) {
+        document.getElementById('instructions-modal').classList.toggle('active', show);
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.1) {
+        if (isMuted) return;
+        unlockAudio();
+        if (!audioCtx) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    function playFanfare() {
+        if (isMuted) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            setTimeout(() => playTone(freq, 'sine', 0.25, 0.15), idx * 120);
+        });
+    }
+
+    const TRANSLATIONS = {
+        en: {
+            appTitle: "⚖️ Dual-Task Balance",
+            instructionsTitle: "📖 How to Play",
+            instructionsText: `<p><strong>🎯 Objective:</strong> Combine motor control and cognitive processing speed over 50 unique rounds.</p>
+                <p><strong>⚠️ Safety First:</strong> Always hold onto a wall or sturdy chair if you feel unsteady!</p>
+                <p><strong>❤️ Lives System:</strong> You have 3 lives. Missing a timed answer or picking incorrectly costs 1 life.</p>
+                <p><strong>🧠 Difficulty Progression:</strong></p>
+                <ul>
+                    <li><strong>Rounds 1–15 (Easy):</strong> Stable stances + Category Matching (12s timer).</li>
+                    <li><strong>Rounds 16–35 (Medium):</strong> Tandem / Marching stances + Synonyms & Rhymes (10s timer).</li>
+                    <li><strong>Rounds 36–50 (Hard):</strong> Single-Leg Stances + Advanced Associations & Antonyms (8s timer).</li>
+                </ul>`,
+            closeBtn: "Got It! 👍",
+            roundText: "Round",
+            easy: "Difficulty: Easy",
+            medium: "Difficulty: Medium",
+            hard: "Difficulty: Hard",
+            poseHeader: "🧘 Physical Balance Pose",
+            startBanner: "Hold a sturdy chair if needed. Press 'Begin Challenge' for Round ",
+            beginBtn: "Begin Challenge 🎯",
+            nextRoundBtn: "Next Round ➡️",
+            gameOverTitle: "Game Over",
+            gameOverBanner: "💀 You ran out of lives! Dual-tasking improves with practice.",
+            restartBtn: "Restart Game 🔄",
+            completeTitle: "🎉 Mastered 50 Rounds!",
+            completeBanner: "🏆 Fall Risk Reduced & Cognitive Reserve Boosted!"
+        },
+        hi: {
+            appTitle: "⚖️ संतुलन और शब्द जुगलबंदी",
+            instructionsTitle: "📖 कैसे खेलें",
+            instructionsText: `<p><strong>🎯 उद्देश्य:</strong> 50 अनोखे स्तरों में शारीरिक संतुलन और मानसिक गति को मजबूत करें।</p>
+                <p><strong>⚠️ सुरक्षा नियम:</strong> यदि असंतुलन महसूस हो तो हमेशा कुर्सी या दीवार का सहारा लें!</p>
+                <p><strong>❤️ जीवन (Lives):</strong> आपके पास 3 जीवन हैं। गलत उत्तर या समय समाप्त होने पर 1 जीवन कम होगा।</p>
+                <p><strong>🧠 कठिनाई स्तर:</strong></p>
+                <ul>
+                    <li><strong>राउंड 1–15 (आसान):</strong> सामान्य मुद्रा + श्रेणी मिलान (12 सेकंड)।</li>
+                    <li><strong>राउंड 16–35 (मध्यम):</strong> टैंडम/कदमताल + पर्यायवाची और तुकबंदी (10 सेकंड)।</li>
+                    <li><strong>राउंड 36–50 (कठिन):</strong> एक पैर पर संतुलन + एडवांस विलोम शब्द (8 सेकंड)।</li>
+                </ul>`,
+            closeBtn: "समझ गया! 👍",
+            roundText: "राउंड",
+            easy: "कठिनाई: आसान",
+            medium: "कठिनाई: मध्यम",
+            hard: "कठिनाई: कठिन",
+            poseHeader: "🧘 संतुलन मुद्रा (Physical Pose)",
+            startBanner: "आवश्यकता होने पर कुर्सी पकड़ें। शुरू करने के लिए दबाएं - राउंड ",
+            beginBtn: "चुनौती शुरू करें 🎯",
+            nextRoundBtn: "अगला राउंड ➡️",
+            gameOverTitle: "गेम ओवर",
+            gameOverBanner: "💀 आपके जीवन समाप्त हो गए! अभ्यास करते रहें।",
+            restartBtn: "दोबारा खेलें 🔄",
+            completeTitle: "🎉 50 राउंड पूरे हुए!",
+            completeBanner: "🏆 आपका शारीरिक संतुलन और मानसिक क्षमता बेहतर हुई है!"
+        },
+        es: {
+            appTitle: "⚖️ Balance y Asociación",
+            instructionsTitle: "📖 Cómo Jugar",
+            instructionsText: `<p><strong>🎯 Objetivo:</strong> Combina el control motor y la velocidad de procesamiento en 50 rondas únicas.</p>
+                <p><strong>⚠️ Seguridad:</strong> ¡Sujétate a una silla o pared si sientes inestabilidad!</p>
+                <p><strong>❤️ Vidas:</strong> Tienes 3 vidas. Perderás 1 vida si fallas o se agota el tiempo.</p>
+                <p><strong>🧠 Dificultad:</strong></p>
+                <ul>
+                    <li><strong>Rondas 1–15 (Fácil):</strong> Postura estable + Categorías (12s).</li>
+                    <li><strong>Rondas 16–35 (Medio):</strong> Postura Tándem + Sinónimos (10s).</li>
+                    <li><strong>Rondas 36–50 (Difícil):</strong> Equilibrio en un pie + Antónimos y Léxico (8s).</li>
+                </ul>`,
+            closeBtn: "¡Entendido! 👍",
+            roundText: "Ronda",
+            easy: "Dificultad: Fácil",
+            medium: "Dificultad: Medio",
+            hard: "Dificultad: Difícil",
+            poseHeader: "🧘 Postura de Equilibrio",
+            startBanner: "Sujétate si es necesario. Presiona Iniciar para la Ronda ",
+            beginBtn: "Iniciar Desafío 🎯",
+            nextRoundBtn: "Siguiente Ronda ➡️",
+            gameOverTitle: "Fin del Juego",
+            gameOverBanner: "💀 ¡Te quedaste sin vidas! Sigue practicando.",
+            restartBtn: "Reiniciar Juego 🔄",
+            completeTitle: "🎉 ¡50 Rondas Completadas!",
+            completeBanner: "🏆 ¡Excelente mejora de equilibrio y agilidad mental!"
+        }
+    };
+
+    function createRound(roundNum, diff, timer, pose, prompt, correctOpt, wrongOpts) {
+        let allOptions = [correctOpt, ...wrongOpts];
+        let indexed = allOptions.map((opt, i) => ({ text: opt, isCorrect: i === 0 }));
+        
+        for (let i = indexed.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+        }
+
+        return {
+            round: roundNum,
+            difficulty: diff,
+            timer: timer,
+            pose: pose,
+            prompt: prompt,
+            options: indexed.map(o => o.text),
+            answer: indexed.findIndex(o => o.isCorrect)
+        };
+    }
+
+    function buildGameDatabase() {
+        const db = { en: [], hi: [], es: [] };
+
+        const enData = [
+            // 1-15: Easy
+            { pose: "Stand tall on both feet, weight centered 🧍", prompt: "Which word belongs to the category: 'FRUIT'?", correct: "Mango", wrong: ["Chair", "Hammer", "Pencil"] },
+            { pose: "Feet shoulder-width apart, arms relaxed 🧘", prompt: "Which word belongs to the category: 'ANIMAL'?", correct: "Tiger", wrong: ["Table", "Shirt", "Ocean"] },
+            { pose: "Narrow Stance: Feet together side-by-side 👣", prompt: "Which word belongs to the category: 'VEHICLE'?", correct: "Bicycle", wrong: ["Spoon", "Cloud", "Shoe"] },
+            { pose: "Stand tall and shift weight slowly left to right ⚖️", prompt: "Which word belongs to the category: 'COLOR'?", correct: "Yellow", wrong: ["Sofa", "Rock", "Clock"] },
+            { pose: "Narrow Stance: Keep feet together, shoulders down 🚶", prompt: "Which word belongs to the category: 'CLOTHING'?", correct: "Jacket", wrong: ["River", "Apple", "Key"] },
+            { pose: "Slight knee bend, stand balanced 🦶", prompt: "Which word belongs to the category: 'TOOL'?", correct: "Screwdriver", wrong: ["Banana", "Pillow", "Glass"] },
+            { pose: "Tiptoe hold: Rise gently on ball of feet 🩰", prompt: "Which word belongs to the category: 'FLOWER'?", correct: "Rose", wrong: ["Car", "Book", "Ring"] },
+            { pose: "Feet shoulder-width apart, chin up 🧍", prompt: "Which word belongs to the category: 'FURNITURE'?", correct: "Sofa", wrong: ["Orange", "Knife", "Bus"] },
+            { pose: "Weight shifted slightly onto heels ⚖️", prompt: "Which word belongs to the category: 'BEVERAGE'?", correct: "Milk", wrong: ["Hat", "Fork", "Tree"] },
+            { pose: "Narrow Stance: Feet touching, arms extended 🦅", prompt: "Which word belongs to the category: 'BIRD'?", correct: "Eagle", wrong: ["Phone", "Mirror", "Plate"] },
+            { pose: "Stand tall with hands placed on hips 🧘", prompt: "Which word belongs to the category: 'VEGETABLE'?", correct: "Carrot", wrong: ["Guitar", "Spoon", "Cloud"] },
+            { pose: "Gentle rocking from heels to toes 🦶", prompt: "Which word belongs to the category: 'SPORT'?", correct: "Tennis", wrong: ["Book", "Door", "Shirt"] },
+            { pose: "Wide stance, arms outstretched sideways 🦅", prompt: "Which word belongs to the category: 'PLANET'?", correct: "Jupiter", wrong: ["Oak", "Iron", "Gold"] },
+            { pose: "Feet together, focus eyes on fixed wall target 👁️", prompt: "Which word belongs to the category: 'INSTRUMENT'?", correct: "Violin", wrong: ["Window", "River", "Apple"] },
+            { pose: "Stand tall with slight trunk rotation side-to-side 🔄", prompt: "Which word belongs to the category: 'OCEAN'?", correct: "Pacific", wrong: ["Sahara", "Everest", "Amazon"] },
+
+            // 16-35: Medium
+            { pose: "Tandem Stance: Right foot directly in front of left 👣", prompt: "Which word is a SYNONYM for 'QUICK'?", correct: "Rapid", wrong: ["Slow", "Heavy", "Quiet"] },
+            { pose: "Tandem Stance: Left foot directly in front of right 👣", prompt: "Which word is a SYNONYM for 'HAPPY'?", correct: "Joyful", wrong: ["Sad", "Angry", "Cold"] },
+            { pose: "Gentle high knees march on the spot 🏃", prompt: "Which word is a SYNONYM for 'HUGE'?", correct: "Gigantic", wrong: ["Tiny", "Weak", "Short"] },
+            { pose: "Tandem Stance: Hold chair lightly with one hand 🪑", prompt: "Which word starts with the letter 'B'?", correct: "Butterfly", wrong: ["Cat", "Dog", "Elephant"] },
+            { pose: "March on the spot: Lift knees gently 🦵", prompt: "Which word rhymes with 'LIGHT'?", correct: "Night", wrong: ["Dark", "Sun", "Moon"] },
+            { pose: "Tandem Stance: Arms held out to sides 🧘", prompt: "Which word is a SYNONYM for 'BRAVE'?", correct: "Courageous", wrong: ["Fearful", "Soft", "Shy"] },
+            { pose: "Side-leg step: Step right leg out and back 🦵", prompt: "Which word starts with the letter 'S'?", correct: "Sunflower", wrong: ["Apple", "Banana", "Orange"] },
+            { pose: "Side-leg step: Step left leg out and back 🦵", prompt: "Which word rhymes with 'RAIN'?", correct: "Train", wrong: ["Cloud", "Water", "Storm"] },
+            { pose: "Tandem Stance: Focus gaze on one fixed wall point 👁️", prompt: "Which word is a SYNONYM for 'SILENT'?", correct: "Quiet", wrong: ["Loud", "Fast", "Bright"] },
+            { pose: "March on spot with slow controlled pace 🥁", prompt: "Which word starts with the letter 'M'?", correct: "Mountain", wrong: ["Valley", "River", "Lake"] },
+            { pose: "Heel-to-toe stance with palms together 🤲", prompt: "Which word rhymes with 'STAR'?", correct: "Guitar", wrong: ["Moon", "Sky", "Sun"] },
+            { pose: "Gentle marching while swinging arms slowly 🏃", prompt: "Which word is a SYNONYM for 'SMART'?", correct: "Clever", wrong: ["Dull", "Slow", "Heavy"] },
+            { pose: "Tandem stance holding arms in a hug shape 🫂", prompt: "Which word starts with the letter 'P'?", correct: "Penguin", wrong: ["Tiger", "Lion", "Bear"] },
+            { pose: "Side steps with shoulder rolls backward 🔄", prompt: "Which word rhymes with 'BOLD'?", correct: "Gold", wrong: ["Warm", "Soft", "Light"] },
+            { pose: "Tandem stance with eyes looking gently upward ☁️", prompt: "Which word is a SYNONYM for 'ANCIENT'?", correct: "Old", wrong: ["New", "Modern", "Fresh"] },
+            { pose: "Marching in place with toe taps forward 🦶", prompt: "Which word starts with the letter 'F'?", correct: "Falcon", wrong: ["Snake", "Whale", "Horse"] },
+            { pose: "Tandem stance, right foot forward, shoulders back 🧍", prompt: "Which word rhymes with 'WAVE'?", correct: "Cave", wrong: ["Ocean", "Tide", "Deep"] },
+            { pose: "Tandem stance, left foot forward, soft posture 🧘", prompt: "Which word is a SYNONYM for 'CALM'?", correct: "Peaceful", wrong: ["Wild", "Noisy", "Fast"] },
+            { pose: "Gentle knees march with hands on hips 🏃", prompt: "Which word starts with the letter 'T'?", correct: "Tornado", wrong: ["Rain", "Breeze", "Snow"] },
+            { pose: "Tandem stance while slowly breathing deeply 🫁", prompt: "Which word rhymes with 'LAKE'?", correct: "Snake", wrong: ["Water", "Fish", "Boat"] },
+
+            // 36-50: Hard
+            { pose: "Single-Leg Stand: Lift right foot off ground 🦩", prompt: "Which word is the OPPOSITE of 'EXPAND'?", correct: "Shrink", wrong: ["Grow", "Stretch", "Build"] },
+            { pose: "Single-Leg Stand: Lift left foot off ground 🦩", prompt: "Which word is the OPPOSITE of 'ANCIENT'?", correct: "Modern", wrong: ["Old", "Historic", "Classic"] },
+            { pose: "Flamingo Pose: Right leg bent, hands on hips 🦩", prompt: "Which word is the OPPOSITE of 'CREATIVE'?", correct: "Unimaginative", wrong: ["Clever", "Artistic", "Smart"] },
+            { pose: "Tree Pose hold: Heel against opposite ankle 🌳", prompt: "Which word is strongly associated with 'OCEAN'?", correct: "Tides", wrong: ["Desert", "Mountain", "Forest"] },
+            { pose: "Single-Leg Stand: Right knee lifted to 90 degrees 🦩", prompt: "Which word is the OPPOSITE of 'GENTLE'?", correct: "Harsh", wrong: ["Kind", "Soft", "Smooth"] },
+            { pose: "Tree Pose hold: Left heel against right ankle 🌳", prompt: "Which word is associated with 'WINTER'?", correct: "Snowstorm", wrong: ["Heatwave", "Palm tree", "Beach"] },
+            { pose: "Single-Leg Stand: Tiptoe balance on right foot 🦶", prompt: "Which word is the OPPOSITE of 'VICTORY'?", correct: "Defeat", wrong: ["Win", "Triumph", "Medal"] },
+            { pose: "Flamingo Pose: Lift left leg, arms out 🦅", prompt: "Which tool is associated with 'ASTRONOMY'?", correct: "Telescope", wrong: ["Microscope", "Stethoscope", "Compass"] },
+            { pose: "Single-Leg Stand: Hold heel off floor 🦶", prompt: "Which word is the OPPOSITE of 'FREQUENT'?", correct: "Rare", wrong: ["Often", "Always", "Daily"] },
+            { pose: "Tree Pose hold: Stand steady, shoulders back 🌳", prompt: "Which concept is associated with 'MUSIC'?", correct: "Symphony", wrong: ["Canvas", "Statue", "Novel"] },
+            { pose: "Single-Leg Stand with head turn left to right 🗣️", prompt: "Which word is the OPPOSITE of 'GENEROUS'?", correct: "Stingy", wrong: ["Kind", "Wealthy", "Giving"] },
+            { pose: "Single-Leg Stand on non-dominant foot 🦩", prompt: "Which concept belongs to 'GEOGRAPHY'?", correct: "Peninsula", wrong: ["Symphony", "Triangle", "Pencil"] },
+            { pose: "Tandem stance with eyes closed for 3 seconds 🙈", prompt: "Which word is a SYNONYM for 'OBSTACLE'?", correct: "Barrier", wrong: ["Path", "Solution", "Bridge"] },
+            { pose: "Heel-to-toe balance with arms crossed 🙅", prompt: "Which word is associated with 'ARCHAEOLOGY'?", correct: "Fossil", wrong: ["Galaxy", "Stethoscope", "Compass"] },
+            { pose: "Single-Leg Stand with soft knee flex 🦵", prompt: "Which word is the OPPOSITE of 'TRANSPARENT'?", correct: "Opaque", wrong: ["Clear", "Glass", "Bright"] }
+        ];
+
+        const hiData = [
+            // 1-15
+            { pose: "दोनों पैरों पर सीधे खड़े हों 🧍", prompt: "इनमें से कौन सा शब्द 'फल' (Fruit) है?", correct: "आम", wrong: ["कुर्सी", "हथौड़ा", "कलम"] },
+            { pose: "पैरों में थोड़ा अंतर रखकर खड़े रहें 🧘", prompt: "इनमें से कौन सा शब्द 'जानवर' (Animal) है?", correct: "शेर", wrong: ["मेज", "कमीज", "सागर"] },
+            { pose: "दोनों पैरों को जोड़कर खड़े रहें 👣", prompt: "इनमें से कौन सा शब्द 'वाहन' (Vehicle) है?", correct: "साइकिल", wrong: ["चम्मच", "बादल", "जूता"] },
+            { pose: "सीधे खड़े होकर वजन बाईं और दाईं ओर बदलें ⚖️", prompt: "इनमें से कौन सा 'रंग' (Color) है?", correct: "पीला", wrong: ["सोफा", "पत्थर", "घड़ी"] },
+            { pose: "पैरों को मिलाकर सीधे खड़े रहें 🚶", prompt: "इनमें से कौन सा 'कपड़ा' (Clothing) है?", correct: "जैकेट", wrong: ["नदी", "सेब", "चाबी"] },
+            { pose: "घुटनों को हल्का सा मोड़कर संतुलन बनाएं 🦶", prompt: "इनमें से कौन सा 'औजार' (Tool) है?", correct: "पेचकश", wrong: ["केला", "तकिया", "गिलास"] },
+            { pose: "एड़ियों को हल्का सा उठाकर पंजों पर संतुलन बनाएं 🩰", prompt: "इनमें से कौन सा 'फूल' (Flower) है?", correct: "गुलाब", wrong: ["कार", "किताब", "अंगूठी"] },
+            { pose: "सीधे खड़े रहें और सीना चौड़ा रखें 🧍", prompt: "इनमें से कौन सा 'फर्नीचर' (Furniture) है?", correct: "सोफा", wrong: ["संतरा", "चाकू", "बस"] },
+            { pose: "वजन एड़ियों पर रखें ⚖️", prompt: "इनमें से कौन सा 'पेय पदार्थ' (Drink) है?", correct: "दूध", wrong: ["टोपी", "कांटा", "पेड़"] },
+            { pose: "पैरों को सटाकर बाहें फैलाएं 🦅", prompt: "इनमें से कौन सा 'पक्षी' (Bird) है?", correct: "चील", wrong: ["फोन", "शीशा", "थाली"] },
+            { pose: "कमर पर हाथ रखकर सीधे खड़े हों 🧘", prompt: "इनमें से कौन सी 'सब्जी' (Vegetable) है?", correct: "गाजर", wrong: ["गिटार", "चम्मच", "बादल"] },
+            { pose: "एड़ी और पंजे को बारी-बारी उठाएं 🦶", prompt: "इनमें से कौन सा 'खेल' (Sport) है?", correct: "टेनिस", wrong: ["किताब", "दरवाजा", "कमीज"] },
+            { pose: "पैरों को फैलाएं और बाहें खोलें 🦅", prompt: "इनमें से कौन सा 'ग्रह' (Planet) है?", correct: "बृहस्पति", wrong: ["सागौन", "लोहा", "सोना"] },
+            { pose: "पैरों को जोड़कर दीवार के बिंदु पर ध्यान लगाएं 👁️", prompt: "इनमें से कौन सा 'संगीत वाद्य' (Instrument) है?", correct: "वायलिन", wrong: ["खिड़की", "नदी", "सेब"] },
+            { pose: "सीधे खड़े होकर शरीर को हल्का घुमाएं 🔄", prompt: "इनमें से कौन सा 'महासागर' (Ocean) है?", correct: "प्रशांत", wrong: ["सहारा", "एवरेस्ट", "अमेज़न"] },
+
+            // 16-35
+            { pose: "टैंडम मुद्रा: दायां पैर बाएं पैर के ठीक आगे रखें 👣", prompt: "इनमें से 'तेज' का पर्यायवाची शब्द कौन सा है?", correct: "शीघ्र", wrong: ["धीमा", "शांत", "भारी"] },
+            { pose: "टैंडम मुद्रा: बायां पैर दाएं पैर के ठीक आगे रखें 👣", prompt: "इनमें से 'खुश' का पर्यायवाची शब्द कौन सा है?", correct: "प्रसन्न", wrong: ["दुखी", "उदास", "ठंडा"] },
+            { pose: "जगह पर हल्के से घुटने उठाकर कदमताल करें 🏃", prompt: "इनमें से 'बड़ा' का पर्यायवाची शब्द कौन सा है?", correct: "विशाल", wrong: ["छोटा", "कमजोर", "नाटा"] },
+            { pose: "टैंडम मुद्रा: एक हाथ से कुर्सी को पकड़ें 🪑", prompt: "'क' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "कमल", wrong: ["गाय", "हाथी", "शेर"] },
+            { pose: "धीमे-धीमे कदमताल करें 🦵", prompt: "'रात' का तुकबंदी (Rhyming) शब्द कौन सा है?", correct: "बात", wrong: ["सूरज", "चांद", "अंधेरा"] },
+            { pose: "टैंडम मुद्रा: दोनों बाहें फैलाकर संतुलन बनाएं 🧘", prompt: "इनमें से 'साहसी' का पर्यायवाची शब्द कौन सा है?", correct: "वीर", wrong: ["डरपोक", "कोमल", "शर्मीला"] },
+            { pose: "दायां पैर बाहर निकालकर वापस लाएं 🦵", prompt: "'स' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "सूरज", wrong: ["आम", "केला", "अमरूद"] },
+            { pose: "बायां पैर बाहर निकालकर वापस लाएं 🦵", prompt: "'पानी' का तुकबंदी (Rhyming) शब्द कौन सा है?", correct: "नानी", wrong: ["बादल", "नदी", "बारिश"] },
+            { pose: "टैंडम मुद्रा: सामने दीवार पर एक बिंदु पर ध्यान केंद्रित करें 👁️", prompt: "इनमें से 'शांत' का पर्यायवाची शब्द कौन सा है?", correct: "मौन", wrong: ["शोर", "तेज", "चमकीला"] },
+            { pose: "नियंत्रित गति में कदमताल करें 🥁", prompt: "'प' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "पर्वत", wrong: ["घाटी", "नदी", "झील"] },
+            { pose: "टैंडम मुद्रा: दोनों हथेलियां आपस में जोड़ें 🤲", prompt: "'तार' का तुकबंदी (Rhyming) शब्द कौन सा है?", correct: "कार", wrong: ["चांद", "आकाश", "सूरज"] },
+            { pose: "हाथ हिलाते हुए कदमताल करें 🏃", prompt: "इनमें से 'बुद्धिमान' का पर्यायवाची शब्द कौन सा है?", correct: "चतुर", wrong: ["मूर्ख", "धीमा", "भारी"] },
+            { pose: "टैंडम मुद्रा में हाथों से छाती को स्पर्श करें 🫂", prompt: "'त' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "तितली", wrong: ["शेर", "भालू", "चील"] },
+            { pose: "साइड स्टेप्स लेते हुए कंधे पीछे घुमाएं 🔄", prompt: "'मोर' का तुकबंदी शब्द कौन सा है?", correct: "चोर", wrong: ["पानी", "हवा", "पेड़"] },
+            { pose: "टैंडम मुद्रा में छत की ओर देखें ☁️", prompt: "इनमें से 'प्राचीन' का पर्यायवाची शब्द कौन सा है?", correct: "पुराना", wrong: ["नया", "आधुनिक", "ताजा"] },
+            { pose: "कदमताल करते हुए पंजों को आगे छुएं 🦶", prompt: "'म' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "मछली", wrong: ["सांप", "हाथी", "घोड़ा"] },
+            { pose: "टैंडम मुद्रा: दायां पैर आगे, कंधे सीधे रखें 🧍", prompt: "'नाम' का तुकबंदी शब्द कौन सा है?", correct: "काम", wrong: ["पानी", "घर", "नदी"] },
+            { pose: "टैंडम मुद्रा: बायां पैर आगे रखें 🧘", prompt: "इनमें से 'दयालु' का पर्यायवाची शब्द कौन सा है?", correct: "कृपालु", wrong: ["क्रूर", "कठोर", "तेज"] },
+            { pose: "कमर पर हाथ रखकर कदमताल करें 🏃", prompt: "'ब' अक्षर से शुरू होने वाला शब्द कौन सा है?", correct: "बगीचा", wrong: ["आकाश", "नदी", "पहाड़"] },
+            { pose: "टैंडम मुद्रा में गहरी सांस लें 🫁", prompt: "'शान' का तुकबंदी शब्द कौन सा है?", correct: "मान", wrong: ["जल", "पेड़", "पक्षी"] },
+
+            // 36-50
+            { pose: "एक पैर पर संतुलन: दायां पैर जमीन से उठाएं 🦩", prompt: "इनमें से 'भारी' का विलोम (Opposite) शब्द कौन सा है?", correct: "हल्का", wrong: ["वजनी", "गहरा", "लंबा"] },
+            { pose: "एक पैर पर संतुलन: बायां पैर जमीन से उठाएं 🦩", prompt: "इनमें से 'पुराना' का विलोम शब्द कौन सा है?", correct: "नया", wrong: ["प्राचीन", "ऐतिहासिक", "पुरातन"] },
+            { pose: "दायां घुटना मोड़कर एक पैर पर खड़े हों 🦩", prompt: "इनमें से 'कठिन' का विलोम शब्द कौन सा है?", correct: "सरल", wrong: ["मुश्किल", "जटिल", "भारी"] },
+            { pose: "वृक्षासन मुद्रा: एड़ी को दूसरे पैर के टखने से लगाएं 🌳", prompt: "'समुद्र' से संबंधित शब्द कौन सा है?", correct: "लहरें", wrong: ["रेगिस्तान", "पहाड़", "जंगल"] },
+            { pose: "एक पैर पर संतुलन: दाएं घुटने को 90 डिग्री उठाएं 🦩", prompt: "इनमें से 'कोमल' का विलोम शब्द कौन सा है?", correct: "कठोर", wrong: ["दयालु", "नरम", "चिकना"] },
+            { pose: "वृक्षासन मुद्रा: बाईं एड़ी को दाएं टखने से लगाएं 🌳", prompt: "'सर्दी' से संबंधित शब्द कौन सा है?", correct: "बर्फबारी", wrong: ["लू", "खजूर", "समुद्र तट"] },
+            { pose: "दाएं पैर के पंजे पर संतुलन बनाएं 🦶", prompt: "इनमें से 'जीत' का विलोम शब्द कौन सा है?", correct: "हार", wrong: ["विजय", "सफलता", "पदक"] },
+            { pose: "बायां पैर उठाएं और बाहें फैलाएं 🦅", prompt: "'अंतरिक्ष' से संबंधित उपकरण कौन सा है?", correct: "दूरबीन", wrong: ["सूक्ष्मदर्शी", "स्टेथोस्कोप", "दिशा-सूचक"] },
+            { pose: "बाईं एड़ी को फर्श से ऊपर उठाकर रखें 🦶", prompt: "इनमें से 'अक्सर' का विलोम शब्द कौन सा है?", correct: "कभी-कभी", wrong: ["हमेशा", "रोज", "बार-बार"] },
+            { pose: "वृक्षासन मुद्रा: स्थिर रहें, कंधे पीछे रखें 🌳", prompt: "'संगीत' से संबंधित अवधारणा कौन सी है?", correct: "राग", wrong: ["कैनवास", "मूर्ति", "उपन्यास"] },
+            { pose: "एक पैर पर खड़े होकर सिर बाईं-दाईं ओर घुमाएं 🗣️", prompt: "इनमें से 'उदार' का विलोम शब्द कौन सा है?", correct: "कंजूस", wrong: ["दयालु", "धनी", "दानी"] },
+            { pose: "दूसरे पैर पर संतुलन बनाएं 🦩", prompt: "'भूगोल' से संबंधित शब्द कौन सा है?", correct: "प्रायद्वीप", wrong: ["संगीत", "त्रिभुज", "कलम"] },
+            { pose: "टैंडम मुद्रा में आंखें बंद करके संतुलन बनाएं 🙈", prompt: "'बाधा' का पर्यायवाची शब्द कौन सा है?", correct: "रुकावट", wrong: ["रास्ता", "समाधान", "पुल"] },
+            { pose: "एड़ी-पंजा संतुलन में बाहें क्रॉस करें 🙅", prompt: "'पुरातत्व' से संबंधित शब्द कौन सा है?", correct: "जीवाश्म", wrong: ["आकाशगंगा", "स्टेथोस्कोप", "दूरबीन"] },
+            { pose: "एक पैर पर घुटने को हल्का मोड़कर खड़े हों 🦵", prompt: "'पारदर्शी' का विलोम शब्द कौन सा है?", correct: "अपारदर्शी", wrong: ["साफ", "कांच", "चमकीला"] }
+        ];
+
+        const esData = [
+            // 1-15
+            { pose: "Ponte recto con ambos pies en el suelo 🧍", prompt: "¿Qué palabra pertenece a la categoría: 'FRUTA'?", correct: "Mango", wrong: ["Silla", "Martillo", "Lápiz"] },
+            { pose: "Pies separados al ancho de los hombros 🧘", prompt: "¿Qué palabra pertenece a la categoría: 'ANIMAL'?", correct: "Tigre", wrong: ["Mesa", "Camisa", "Océano"] },
+            { pose: "Postura estrecha: Pies juntos uno al lado del otro 👣", prompt: "¿Qué palabra pertenece a la categoría: 'VEHÍCULO'?", correct: "Bicicleta", wrong: ["Cuchara", "Nube", "Zapato"] },
+            { pose: "Mantén el equilibrio cambiando el peso de lado a lado ⚖️", prompt: "¿Qué palabra pertenece a la categoría: 'COLOR'?", correct: "Amarillo", wrong: ["Sofá", "Piedra", "Reloj"] },
+            { pose: "Postura estrecha: Pies juntos y hombros relajados 🚶", prompt: "¿Qué palabra pertenece a la categoría: 'ROPA'?", correct: "Chaqueta", wrong: ["Río", "Manzana", "Llave"] },
+            { pose: "Dobla ligeramente las rodillas 🦶", prompt: "¿Qué palabra pertenece a la categoría: 'HERRAMIENTA'?", correct: "Destornillador", wrong: ["Plátano", "Almohada", "Vaso"] },
+            { pose: "Ponte de puntillas suavemente 🩰", prompt: "¿Qué palabra pertenece a la categoría: 'FLOR'?", correct: "Rosa", wrong: ["Coche", "Libro", "Anillo"] },
+            { pose: "Pies separados, cabeza erguida 🧍", prompt: "¿Qué palabra pertenece a la categoría: 'MUEBLE'?", correct: "Sofá", wrong: ["Naranja", "Cuchillo", "Autobús"] },
+            { pose: "Peso ligeramente sobre los talones ⚖️", prompt: "¿Qué palabra pertenece a la categoría: 'BEBIDA'?", correct: "Leche", wrong: ["Sombrero", "Tenedor", "Árbol"] },
+            { pose: "Postura estrecha con brazos extendidos 🦅", prompt: "¿Qué palabra pertenece a la categoría: 'AVE'?", correct: "Águila", wrong: ["Teléfono", "Espejo", "Plato"] },
+            { pose: "Postura erguida con manos en la cintura 🧘", prompt: "¿Qué palabra pertenece a la categoría: 'VERDURA'?", correct: "Zanahoria", wrong: ["Guitarra", "Cuchara", "Nube"] },
+            { pose: "Balanceo suave de talón a punta 🦶", prompt: "¿Qué palabra pertenece a la categoría: 'DEPORTE'?", correct: "Tenis", wrong: ["Libro", "Puerta", "Camisa"] },
+            { pose: "Postura ancha con brazos extendidos 🦅", prompt: "¿Qué palabra pertenece a la categoría: 'PLANETA'?", correct: "Júpiter", wrong: ["Roble", "Hierro", "Oro"] },
+            { pose: "Pies juntos mirando a un punto fijo 👁️", prompt: "¿Qué palabra pertenece a la categoría: 'INSTRUMENTO'?", correct: "Violín", wrong: ["Ventana", "Río", "Manzana"] },
+            { pose: "Giro leve de tronco de lado a lado 🔄", prompt: "¿Qué palabra pertenece a la categoría: 'OCÉANO'?", correct: "Pacífico", wrong: ["Sáhara", "Everest", "Amazonas"] },
+
+            // 16-35
+            { pose: "Postura Tándem: Pie derecho directamente delante del izquierdo 👣", prompt: "¿Cuál es un SINÓNIMO de 'RÁPIDO'?", correct: "Veloz", wrong: ["Lento", "Pesado", "Callado"] },
+            { pose: "Postura Tándem: Pie izquierdo delante del derecho 👣", prompt: "¿Cuál es un SINÓNIMO de 'FELIZ'?", correct: "Alegre", wrong: ["Triste", "Enojado", "Frío"] },
+            { pose: "Marche suavemente levantando las rodillas 🏃", prompt: "¿Cuál es un SINÓNIMO de 'GRANDE'?", correct: "Enorme", wrong: ["Pequeño", "Débil", "Corto"] },
+            { pose: "Postura Tándem: Sujeta la silla con una mano 🪑", prompt: "¿Qué palabra empieza con la letra 'B'?", correct: "Mariposa", wrong: ["Gato", "Perro", "Elefante"] },
+            { pose: "Marche en el lugar levantando rodillas 🦵", prompt: "¿Qué palabra rima con 'SOL'?", correct: "Caracol", wrong: ["Luz", "Luna", "Estrella"] },
+            { pose: "Postura Tándem: Brazos extendidos a los lados 🧘", prompt: "¿Cuál es un SINÓNIMO de 'VALIENTE'?", correct: "Corajudo", wrong: ["Miedoso", "Suave", "Tímido"] },
+            { pose: "Paso lateral: Mueve la pierna derecha afuera y adentro 🦵", prompt: "¿Qué palabra empieza con la letra 'S'?", correct: "Sol", wrong: ["Manzana", "Plátano", "Naranja"] },
+            { pose: "Paso lateral: Mueve la pierna izquierda afuera y adentro 🦵", prompt: "¿Qué palabra rima con 'MAR'?", correct: "Amar", wrong: ["Agua", "Ola", "Pez"] },
+            { pose: "Postura Tándem: Mira fijamente a un punto en la pared 👁️", prompt: "¿Cuál es un SINÓNIMO de 'SILENCIOSO'?", correct: "Callado", wrong: ["Ruidoso", "Rápido", "Brillante"] },
+            { pose: "Marche a paso lento y controlado 🥁", prompt: "¿Qué palabra empieza con la letra 'M'?", correct: "Montaña", wrong: ["Valle", "Río", "Lago"] },
+            { pose: "Postura Tándem uniendo las palmas de las manos 🤲", prompt: "¿Qué palabra rima con 'FLOR'?", correct: "Amor", wrong: ["Sol", "Mar", "Luz"] },
+            { pose: "Marcha suave balanceando los brazos 🏃", prompt: "¿Cuál es un SINÓNIMO de 'INTELIGENTE'?", correct: "Astuto", wrong: ["Lento", "Torpe", "Pesado"] },
+            { pose: "Postura Tándem cruzando los brazos 🫂", prompt: "¿Qué palabra empieza con la letra 'P'?", correct: "Pingüino", wrong: ["Tigre", "León", "Oso"] },
+            { pose: "Pasos laterales con rotación de hombros 🔄", prompt: "¿Qué palabra rima con 'CANCION'?", correct: "Corazón", wrong: ["Sol", "Luz", "Mar"] },
+            { pose: "Postura Tándem mirando hacia el techo ☁️", prompt: "¿Cuál es un SINÓNIMO de 'ANTIGUO'?", correct: "Viejo", wrong: ["Nuevo", "Moderno", "Fresco"] },
+            { pose: "Marcha en el sitio tocando con la punta del pie 🦶", prompt: "¿Qué palabra empieza con la letra 'F'?", correct: "Halcón", wrong: ["Serpiente", "Ballena", "Caballo"] },
+            { pose: "Postura Tándem, pie derecho adelante 🧍", prompt: "¿Qué palabra rima con 'RÍO'?", correct: "Frío", wrong: ["Mar", "Agua", "Pez"] },
+            { pose: "Postura Tándem, pie izquierdo adelante 🧘", prompt: "¿Cuál es un SINÓNIMO de 'CALMA'?", correct: "Paz", wrong: ["Ruido", "Furia", "Veloz"] },
+            { pose: "Marcha con manos en la cintura 🏃", prompt: "¿Qué palabra empieza con la letra 'T'?", correct: "Tormenta", wrong: ["Lluvia", "Nube", "Sol"] },
+            { pose: "Postura Tándem respirando profundamente 🫁", prompt: "¿Qué palabra rima con 'VIENTO'?", correct: "Ciento", wrong: ["Sol", "Mar", "Luz"] },
+
+            // 36-50
+            { pose: "Equilibrio en un pie: Levanta el pie derecho 🦩", prompt: "¿Cuál es el OPUESTO de 'EXPANDIR'?", correct: "Encoger", wrong: ["Crecer", "Estirar", "Construir"] },
+            { pose: "Equilibrio en un pie: Levanta el pie izquierdo 🦩", prompt: "¿Cuál es el OPUESTO de 'ANTIGUO'?", correct: "Moderno", wrong: ["Viejo", "Histórico", "Clásico"] },
+            { pose: "Postura de Flamenco: Pierna derecha doblada 🦩", prompt: "¿Cuál es el OPUESTO de 'DIFÍCIL'?", correct: "Fácil", wrong: ["Complicado", "Pesado", "Duro"] },
+            { pose: "Postura del Árbol: Talón apoyado en el tobillo opuesto 🌳", prompt: "¿Qué palabra está asociada con 'OCÉANO'?", correct: "Mareas", wrong: ["Desierto", "Montaña", "Bosque"] },
+            { pose: "Equilibrio en un pie: Rodilla derecha a 90 grados 🦩", prompt: "¿Cuál es el OPUESTO de 'SUAVE'?", correct: "Áspero", wrong: ["Amable", "Dulce", "Liso"] },
+            { pose: "Postura del Árbol: Talón izquierdo en el tobillo derecho 🌳", prompt: "¿Qué palabra se asocia con 'INVIERNO'?", correct: "Nieve", wrong: ["Calor", "Palmera", "Playa"] },
+            { pose: "Equilibrio sobre los dedos del pie derecho 🦶", prompt: "¿Cuál es el OPUESTO de 'VICTORIA'?", correct: "Derrota", wrong: ["Triunfo", "Éxito", "Medalla"] },
+            { pose: "Levanta la pierna izquierda con brazos abiertos 🦅", prompt: "¿Qué instrumento se asocia con 'ASTRONOMÍA'?", correct: "Telescopio", wrong: ["Microscopio", "Estetoscopio", "Brújula"] },
+            { pose: "Equilibrio sobre un pie sosteniendo el talón arriba 🦶", prompt: "¿Cuál es el OPUESTO de 'FRECUENTE'?", correct: "Raro", wrong: ["A menudo", "Siempre", "Diario"] },
+            { pose: "Postura del Árbol: Mantén la estabilidad 🌳", prompt: "¿Qué concepto se asocia con 'MÚSICA'?", correct: "Sinfonía", wrong: ["Lienzo", "Estatua", "Novela"] },
+            { pose: "Equilibrio en un pie girando la cabeza 🗣️", prompt: "¿Cuál es el OPUESTO de 'GENEROSO'?", correct: "Tacaño", wrong: ["Amable", "Rico", "Dador"] },
+            { pose: "Equilibrio en el otro pie 🦩", prompt: "¿Qué palabra pertenece a 'GEOGRAFÍA'?", correct: "Península", wrong: ["Sinfonía", "Triángulo", "Lápiz"] },
+            { pose: "Postura Tándem con ojos cerrados 3s 🙈", prompt: "¿Cuál es un SINÓNIMO de 'OBSTÁCULO'?", correct: "Barrera", wrong: ["Camino", "Solución", "Puente"] },
+            { pose: "Equilibrio talón-punta con brazos cruzados 🙅", prompt: "¿Qué palabra se asocia con 'ARQUEOLOGÍA'?", correct: "Fósil", wrong: ["Galaxia", "Estetoscopio", "Telescopio"] },
+            { pose: "Equilibrio en un pie con rodilla doblada 🦵", prompt: "¿Cuál es el OPUESTO de 'TRANSPARENTE'?", correct: "Opaco", wrong: ["Claro", "Vidrio", "Brillante"] }
+        ];
+
+        for (let i = 0; i < TOTAL_ROUNDS; i++) {
+            let diff = i < 15 ? 1 : (i < 35 ? 2 : 3);
+            let timeSec = diff === 1 ? 12 : (diff === 2 ? 10 : 8);
+
+            db.en.push(createRound(i + 1, diff, timeSec, enData[i].pose, enData[i].prompt, enData[i].correct, enData[i].wrong));
+            db.hi.push(createRound(i + 1, diff, timeSec, hiData[i].pose, hiData[i].prompt, hiData[i].correct, hiData[i].wrong));
+            db.es.push(createRound(i + 1, diff, timeSec, esData[i].pose, esData[i].prompt, esData[i].correct, esData[i].wrong));
+        }
+
+        return db;
+    }
+
+    const GAME_DB = buildGameDatabase();
+
+    let currentLang = 'en';
+    let currentRound = 1;
+    let lives = 3;
+    let gameState = 'IDLE';
+    let timerInterval = null;
+
+    function changeLanguage() {
+        stopAudio();
+        currentLang = document.getElementById('lang-select').value;
+        updateLangUI();
+        resetRoundView();
+    }
+
+    function updateLangUI() {
+        const t = TRANSLATIONS[currentLang];
+        document.getElementById('app-title').innerText = t.appTitle;
+        document.getElementById('modal-title').innerText = t.instructionsTitle;
+        document.getElementById('modal-content').innerHTML = t.instructionsText;
+        document.getElementById('modal-close-btn').innerText = t.closeBtn;
+        document.getElementById('pose-header').innerText = t.poseHeader;
+
+        updateMetaUI();
+    }
+
+    function updateLivesUI() {
+        const hearts = '❤️'.repeat(Math.max(0, lives)) + '🖤'.repeat(Math.max(0, 3 - lives));
+        document.getElementById('lives-lbl').innerText = hearts;
+    }
+
+    function updateMetaUI() {
+        const t = TRANSLATIONS[currentLang];
+        document.getElementById('round-lbl').innerText = `${t.roundText} ${currentRound} / ${TOTAL_ROUNDS}`;
+
+        let diffText = currentRound <= 15 ? t.easy : (currentRound <= 35 ? t.medium : t.hard);
+        document.getElementById('difficulty-lbl').innerText = diffText;
+
+        const progressPct = ((currentRound - 1) / TOTAL_ROUNDS) * 100;
+        document.getElementById('progress-fill').style.width = `${progressPct}%`;
+
+        updateLivesUI();
+    }
+
+    function resetRoundView() {
+        gameState = 'IDLE';
+        stopAudio();
+        clearInterval(timerInterval);
+        const t = TRANSLATIONS[currentLang];
+        const roundData = GAME_DB[currentLang][currentRound - 1];
+
+        document.getElementById('status-banner').innerText = `${t.startBanner}${currentRound}!`;
+        document.getElementById('pose-instruction').innerText = roundData.pose;
+        document.getElementById('task-prompt').innerText = roundData.prompt;
+        document.getElementById('task-subtext').innerText = `${t.startBanner}${currentRound}`;
+
+        document.getElementById('timer-container').classList.add('hidden');
+        document.getElementById('options-container').classList.add('hidden');
+
+        const mainBtn = document.getElementById('main-btn');
+        mainBtn.innerText = t.beginBtn;
+        mainBtn.className = "btn";
+        updateMetaUI();
+    }
+
+    function handleMainAction() {
+        playTone(520, 'sine', 0.1, 0.08);
+        if (gameState === 'GAME_OVER') {
+            currentRound = 1;
+            lives = 3;
+            resetRoundView();
+            return;
+        }
+        if (gameState === 'IDLE' || gameState === 'RESULTS') {
+            startRoundChallenge();
+        }
+    }
+
+    function getVoiceForLang(lang) {
+        if (!availableVoices.length) populateVoices();
+        const codeMap = { 
+            hi: ['hi', 'hi-in', 'hindi'], 
+            es: ['es', 'es-es', 'es-mx', 'spanish'], 
+            en: ['en', 'en-us', 'english'] 
+        };
+        const targets = codeMap[lang] || ['en'];
+
+        for (let target of targets) {
+            let found = availableVoices.find(v => 
+                v.lang.toLowerCase().replace('_','-').startsWith(target) || 
+                v.name.toLowerCase().includes(target)
+            );
+            if (found) return found;
+        }
+        return null;
+    }
+
+    function readAloud(textToSpeak) {
+        if (isMuted || !synth) return;
+        stopAudio();
+        
+        try {
+            const utter = new SpeechSynthesisUtterance(textToSpeak);
+            const matchedVoice = getVoiceForLang(currentLang);
+            if (matchedVoice) {
+                utter.voice = matchedVoice;
+                utter.lang = matchedVoice.lang;
+            } else {
+                if (currentLang === 'hi') utter.lang = 'hi-IN';
+                else if (currentLang === 'es') utter.lang = 'es-ES';
+                else utter.lang = 'en-US';
+            }
+
+            utter.rate = 0.9;
+            synth.speak(utter);
+        } catch(e) {}
+    }
+
+    function startRoundChallenge() {
+        stopAudio();
+        gameState = 'PLAYING';
+        const roundData = GAME_DB[currentLang][currentRound - 1];
+
+        document.getElementById('status-banner').innerText = `Maintain Pose & Solve! Time: ${roundData.timer}s`;
+        document.getElementById('pose-instruction').innerText = roundData.pose;
+        document.getElementById('task-prompt').innerText = roundData.prompt;
+        document.getElementById('task-subtext').innerText = "";
+
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        optionsContainer.classList.remove('hidden');
+
+        roundData.options.forEach((optText, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<span>${optText}</span>`;
+            btn.onclick = () => handleAnswer(idx, btn);
+            optionsContainer.appendChild(btn);
+        });
+
+        document.getElementById('main-btn').classList.add('hidden');
+
+        readAloud(`${roundData.pose}. ${roundData.prompt}`);
+        startTimer(roundData.timer);
+    }
+
+    function startTimer(seconds) {
+        clearInterval(timerInterval);
+        document.getElementById('timer-container').classList.remove('hidden');
+        const timerFill = document.getElementById('timer-fill');
+        timerFill.style.width = '100%';
+        timerFill.style.backgroundColor = '#4cc9f0';
+
+        let startTime = Date.now();
+        let totalDuration = seconds * 1000;
+
+        timerInterval = setInterval(() => {
+            let elapsed = Date.now() - startTime;
+            let remaining = Math.max(0, totalDuration - elapsed);
+            let pct = (remaining / totalDuration) * 100;
+
+            timerFill.style.width = `${pct}%`;
+
+            if (pct < 30) {
+                timerFill.style.backgroundColor = '#e63946';
+            }
+
+            if (remaining <= 0) {
+                clearInterval(timerInterval);
+                handleTimeout();
+            }
+        }, 50);
+    }
+
+    function handleTimeout() {
+        if (gameState !== 'PLAYING') return;
+        stopAudio();
+        lives--;
+        updateLivesUI();
+        playTone(300, 'sawtooth', 0.25, 0.1);
+
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.onclick = null);
+
+        document.getElementById('status-banner').innerText = "⏰ Time's up! Balance lost.";
+
+        setTimeout(() => {
+            if (lives <= 0) showGameOver();
+            else showResults(false);
+        }, 1200);
+    }
+
+    function handleAnswer(selectedIdx, buttonEl) {
+        if (gameState !== 'PLAYING') return;
+        stopAudio();
+        clearInterval(timerInterval);
+
+        const roundData = GAME_DB[currentLang][currentRound - 1];
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.onclick = null);
+
+        if (selectedIdx === roundData.answer) {
+            buttonEl.classList.add('correct');
+            buttonEl.innerHTML += ` <span>✅</span>`;
+            playTone(600, 'sine', 0.15, 0.1);
+            setTimeout(() => showResults(true), 1000);
+        } else {
+            lives--;
+            updateLivesUI();
+            buttonEl.classList.add('incorrect');
+            buttonEl.innerHTML += ` <span>❌</span>`;
+            buttons[roundData.answer].classList.add('correct');
+            playTone(300, 'sawtooth', 0.2, 0.08);
+
+            setTimeout(() => {
+                if (lives <= 0) showGameOver();
+                else showResults(false);
+            }, 1200);
+        }
+    }
+
+    function showGameOver() {
+        gameState = 'GAME_OVER';
+        stopAudio();
+        clearInterval(timerInterval);
+        const t = TRANSLATIONS[currentLang];
+
+        document.getElementById('options-container').classList.add('hidden');
+        document.getElementById('timer-container').classList.add('hidden');
+
+        document.getElementById('status-banner').innerText = t.gameOverBanner;
+        document.getElementById('task-prompt').innerText = t.gameOverTitle;
+        document.getElementById('task-subtext').innerText = `You made it to Round ${currentRound}.`;
+
+        const mainBtn = document.getElementById('main-btn');
+        mainBtn.innerText = t.restartBtn;
+        mainBtn.className = "btn";
+        mainBtn.classList.remove('hidden');
+
+        playTone(200, 'sawtooth', 0.4, 0.15);
+    }
+
+    function showResults(isCorrect) {
+        gameState = 'RESULTS';
+        stopAudio();
+        const t = TRANSLATIONS[currentLang];
+
+        document.getElementById('options-container').classList.add('hidden');
+        document.getElementById('timer-container').classList.add('hidden');
+
+        if (isCorrect) {
+            document.getElementById('status-banner').innerText = `✅ Great Dual-Tasking! Round ${currentRound} Complete.`;
+            playTone(650, 'sine', 0.2, 0.1);
+        }
+
+        if (currentRound < TOTAL_ROUNDS) {
+            currentRound++;
+            updateMetaUI();
+
+            const nextRoundData = GAME_DB[currentLang][currentRound - 1];
+            document.getElementById('pose-instruction').innerText = nextRoundData.pose;
+            document.getElementById('task-prompt').innerText = nextRoundData.prompt;
+
+            const mainBtn = document.getElementById('main-btn');
+            mainBtn.innerText = t.nextRoundBtn;
+            mainBtn.className = "btn";
+            mainBtn.classList.remove('hidden');
+        } else {
+            document.getElementById('status-banner').innerText = t.completeBanner;
+            document.getElementById('task-prompt').innerText = t.completeTitle;
+            document.getElementById('main-btn').classList.add('hidden');
+            playFanfare();
+        }
+    }
+
+    // Initialize Game
+    updateLangUI();
+    resetRoundView();
+</script>
+
+</body>
+</html>

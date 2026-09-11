@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Micro-Strategy Builder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body {
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .game-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    /* Top Bar */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #c084fc;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .top-btns {
+      display: flex;
+      gap: 0.4rem;
+    }
+    .icon-btn {
+      background: #334155;
+      border: none;
+      color: #f8fafc;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .icon-btn:hover { background: #475569; }
+
+    /* Stats Row */
+    .stats-bar {
+      background: #0f172a;
+      padding: 0.6rem 1rem;
+      border-radius: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .round-tag { color: #facc15; }
+    .lives { color: #f43f5e; letter-spacing: 2px; }
+    .level-tag { color: #38bdf8; }
+
+    /* Instructions & Speed Select */
+    .banner {
+      background: #fed7aa;
+      color: #7c2d12;
+      text-align: center;
+      padding: 0.5rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .speed-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    select {
+      background: #0f172a;
+      color: #f8fafc;
+      border: 1px solid #334155;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Grid Area */
+    .grid-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      background: #0f172a;
+      padding: 10px;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      width: 280px;
+      height: 280px;
+    }
+    .cell {
+      background: #1e293b;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      transition: background 0.2s;
+    }
+
+    .player-ball {
+      width: 22px;
+      height: 22px;
+      background: radial-gradient(circle at 30% 30%, #60a5fa, #1d4ed8);
+      border-radius: 50%;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+    .star-target {
+      font-size: 1.5rem;
+      animation: pulse 1.5s infinite;
+    }
+    .obstacle {
+      font-size: 1.2rem;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+    }
+
+    /* Move Sequence Slots */
+    .sequence-section {
+      background: #0f172a;
+      padding: 0.65rem;
+      border-radius: 12px;
+      text-align: center;
+    }
+    .sequence-section p {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 0.4rem;
+    }
+    .slots-wrapper {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      min-height: 38px;
+    }
+    .slot {
+      width: 34px;
+      height: 34px;
+      background: #1e293b;
+      border: 1px dashed #475569;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: #38bdf8;
+    }
+    .slot.filled { border-style: solid; border-color: #38bdf8; }
+
+    /* D-Pad Controls */
+    .dpad {
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 40px);
+      gap: 6px;
+      justify-content: center;
+      margin: 0.2rem 0;
+    }
+    .dbtn {
+      background: #334155;
+      border: 1px solid #475569;
+      color: #f8fafc;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .dbtn:hover { background: #475569; }
+    .dbtn:active { transform: scale(0.95); }
+    .dbtn-clear { background: #f43f5e; border-color: #e11d48; font-size: 0.7rem; }
+    .dbtn-clear:hover { background: #e11d48; }
+
+    /* Execute Button */
+    .btn-execute {
+      background: #475569;
+      color: #94a3b8;
+      border: none;
+      padding: 0.8rem;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 0.95rem;
+      cursor: not-allowed;
+      transition: all 0.2s;
+    }
+    .btn-execute.ready {
+      background: #38bdf8;
+      color: #0f172a;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+    .btn-execute.ready:hover { background: #7dd3fc; }
+  </style>
+</head>
+<body>
+
+  <div class="game-card">
+    <div class="header">
+      <div class="title">♟️ Micro-Strategy</div>
+      <div class="top-btns">
+        <button class="icon-btn" onclick="restartGame()" title="Restart">🔄</button>
+        <button class="icon-btn" onclick="toggleSound()" id="snd-btn" title="Sound">🔊</button>
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="round-tag" id="round-display">⭐ Round: 1/30</div>
+      <div class="lives" id="lives-display">❤️❤️❤️</div>
+      <div class="level-tag" id="level-display">Lvl 1</div>
+    </div>
+
+    <div class="banner" id="banner-text">Plan sequence to reach the Star!</div>
+
+    <div class="speed-bar">
+      ⏱️ Sim Speed:
+      <select id="speed-select" onchange="updateSpeed()">
+        <option value="600">Slow (0.6s/step)</option>
+        <option value="350" selected>Normal (0.35s/step)</option>
+        <option value="180">Fast (0.18s/step)</option>
+      </select>
+    </div>
+
+    <div class="grid-container">
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="sequence-section">
+      <p id="slot-count-label">Planned Move Sequence</p>
+      <div class="slots-wrapper" id="slots-wrapper"></div>
+    </div>
+
+    <div class="dpad">
+      <div></div>
+      <button class="dbtn" onclick="addMove('UP')">⬆️</button>
+      <div></div>
+      <button class="dbtn" onclick="addMove('LEFT')">⬅️</button>
+      <button class="dbtn dbtn-clear" onclick="clearMoves()">CLEAR</button>
+      <button class="dbtn" onclick="addMove('RIGHT')">➡️</button>
+      <div></div>
+      <button class="dbtn" onclick="addMove('DOWN')">⬇️</button>
+      <div></div>
+    </div>
+
+    <button class="btn-execute" id="exec-btn" onclick="executeSequence()">Execute Sequence 🚀</button>
+  </div>
+
+  <script>
+    const GRID_SIZE = 5;
+    let round = 1;
+    let lives = 3;
+    let soundEnabled = true;
+    let simSpeed = 350;
+
+    let playerX = 0, playerY = 0;
+    let startX = 0, startY = 0;
+    let starX = 0, starY = 0;
+    let obstacles = [];
+    let requiredSteps = 3;
+
+    let plannedMoves = [];
+    let isSimulating = false;
+
+    function playAudio(type) {
+      if (!soundEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        if (type === 'click') {
+          osc.frequency.value = 400;
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+          osc.start(); osc.stop(ctx.currentTime + 0.05);
+        } else if (type === 'step') {
+          osc.frequency.value = 280;
+          gain.gain.setValueAtTime(0.08, ctx.currentTime);
+          osc.start(); osc.stop(ctx.currentTime + 0.08);
+        } else if (type === 'win') {
+          osc.frequency.setValueAtTime(523, ctx.currentTime);
+          osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+          osc.frequency.setValueAtTime(783, ctx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          osc.start(); osc.stop(ctx.currentTime + 0.35);
+        } else if (type === 'fail') {
+          osc.frequency.setValueAtTime(220, ctx.currentTime);
+          osc.frequency.setValueAtTime(120, ctx.currentTime + 0.15);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          osc.start(); osc.stop(ctx.currentTime + 0.3);
+        }
+      } catch (e) {}
+    }
+
+    function toggleSound() {
+      soundEnabled = !soundEnabled;
+      document.getElementById('snd-btn').innerText = soundEnabled ? '🔊' : '🔇';
+    }
+
+    function updateSpeed() {
+      simSpeed = parseInt(document.getElementById('speed-select').value);
+    }
+
+    // BFS Pathfinding to compute shortest steps avoiding obstacles
+    function computeShortestPaths(sx, sy, currentObstacles) {
+      let dist = Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(-1));
+      let queue = [{ x: sx, y: sy, d: 0 }];
+      dist[sy][sx] = 0;
+
+      const dirs = [
+        { x: 0, y: -1 }, { x: 0, y: 1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 }
+      ];
+
+      while (queue.length > 0) {
+        let curr = queue.shift();
+
+        for (let dir of dirs) {
+          let nx = curr.x + dir.x;
+          let ny = curr.y + dir.y;
+
+          if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+            let isObs = currentObstacles.some(o => o.x === nx && o.y === ny);
+            if (!isObs && dist[ny][nx] === -1) {
+              dist[ny][nx] = curr.d + 1;
+              queue.push({ x: nx, y: ny, d: curr.d + 1 });
+            }
+          }
+        }
+      }
+      return dist;
+    }
+
+    function setupRound() {
+      plannedMoves = [];
+      isSimulating = false;
+
+      // Progressive difficulty scaling per round
+      // Target sequence steps scale from 3 up to 8
+      let targetSteps = Math.min(3 + Math.floor((round - 1) / 3), 8);
+      // Obstacle count increases with round number
+      let targetObstacles = Math.min(Math.floor((round - 1) / 2), 5);
+
+      let foundValidBoard = false;
+      let attempts = 0;
+
+      while (!foundValidBoard && attempts < 300) {
+        attempts++;
+        obstacles = [];
+
+        playerX = Math.floor(Math.random() * GRID_SIZE);
+        playerY = Math.floor(Math.random() * GRID_SIZE);
+
+        // Randomize obstacles
+        while (obstacles.length < targetObstacles) {
+          let ox = Math.floor(Math.random() * GRID_SIZE);
+          let oy = Math.floor(Math.random() * GRID_SIZE);
+          if ((ox !== playerX || oy !== playerY) && !obstacles.some(o => o.x === ox && o.y === oy)) {
+            obstacles.push({ x: ox, y: oy });
+          }
+        }
+
+        let distMap = computeShortestPaths(playerX, playerY, obstacles);
+        let validTargets = [];
+
+        for (let r = 0; r < GRID_SIZE; r++) {
+          for (let c = 0; c < GRID_SIZE; c++) {
+            if (distMap[r][c] === targetSteps) {
+              validTargets.push({ x: c, y: r });
+            }
+          }
+        }
+
+        if (validTargets.length > 0) {
+          let chosen = validTargets[Math.floor(Math.random() * validTargets.length)];
+          starX = chosen.x;
+          starY = chosen.y;
+          requiredSteps = targetSteps;
+          foundValidBoard = true;
+        } else if (targetObstacles > 0 && attempts % 10 === 0) {
+          targetObstacles--; // Relax obstacles if board generation is tight
+        }
+      }
+
+      startX = playerX;
+      startY = playerY;
+
+      updateUI();
+      renderGrid();
+      renderSlots();
+    }
+
+    function updateUI() {
+      document.getElementById('round-display').innerText = `⭐ Round: ${round}/30`;
+      document.getElementById('lives-display').innerText = '❤️'.repeat(lives);
+      document.getElementById('level-display').innerText = `Lvl ${Math.ceil(round/3)}: ${requiredSteps} Steps`;
+      document.getElementById('banner-text').innerText = `Plan ${requiredSteps} moves per turn to reach the Star!`;
+      document.getElementById('slot-count-label').innerText = `PLANNED MOVE SEQUENCE (${requiredSteps} STEPS)`;
+    }
+
+    function renderGrid() {
+      const gridEl = document.getElementById('grid');
+      gridEl.innerHTML = '';
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+
+          let isObs = obstacles.some(o => o.x === c && o.y === r);
+
+          if (c === playerX && r === playerY) {
+            const ball = document.createElement('div');
+            ball.className = 'player-ball';
+            cell.appendChild(ball);
+          } else if (c === starX && r === starY) {
+            const star = document.createElement('div');
+            star.className = 'star-target';
+            star.innerText = '⭐';
+            cell.appendChild(star);
+          } else if (isObs) {
+            const obs = document.createElement('div');
+            obs.className = 'obstacle';
+            obs.innerText = '🚧';
+            cell.appendChild(obs);
+          }
+
+          gridEl.appendChild(cell);
+        }
+      }
+    }
+
+    function renderSlots() {
+      const wrapper = document.getElementById('slots-wrapper');
+      wrapper.innerHTML = '';
+
+      const arrows = { UP: '⬆️', DOWN: '⬇️', LEFT: '⬅️', RIGHT: '➡️' };
+
+      for (let i = 0; i < requiredSteps; i++) {
+        const slot = document.createElement('div');
+        slot.className = `slot ${plannedMoves[i] ? 'filled' : ''}`;
+        slot.innerText = plannedMoves[i] ? arrows[plannedMoves[i]] : '';
+        wrapper.appendChild(slot);
+      }
+
+      const execBtn = document.getElementById('exec-btn');
+      if (plannedMoves.length === requiredSteps && !isSimulating) {
+        execBtn.classList.add('ready');
+      } else {
+        execBtn.classList.remove('ready');
+      }
+    }
+
+    function addMove(dir) {
+      if (isSimulating || plannedMoves.length >= requiredSteps) return;
+      playAudio('click');
+      plannedMoves.push(dir);
+      renderSlots();
+    }
+
+    function clearMoves() {
+      if (isSimulating) return;
+      playAudio('click');
+      plannedMoves = [];
+      renderSlots();
+    }
+
+    async function executeSequence() {
+      if (plannedMoves.length < requiredSteps || isSimulating) return;
+
+      isSimulating = true;
+      document.getElementById('exec-btn').classList.remove('ready');
+
+      let currentX = startX;
+      let currentY = startY;
+      let hitObstacle = false;
+
+      for (let i = 0; i < plannedMoves.length; i++) {
+        await new Promise(resolve => setTimeout(resolve, simSpeed));
+
+        const move = plannedMoves[i];
+        let nextX = currentX;
+        let nextY = currentY;
+
+        if (move === 'UP') nextY = Math.max(0, currentY - 1);
+        if (move === 'DOWN') nextY = Math.min(GRID_SIZE - 1, currentY + 1);
+        if (move === 'LEFT') nextX = Math.max(0, currentX - 1);
+        if (move === 'RIGHT') nextX = Math.min(GRID_SIZE - 1, currentX + 1);
+
+        // Check for obstacle collision
+        if (obstacles.some(o => o.x === nextX && o.y === nextY)) {
+          hitObstacle = true;
+          break;
+        }
+
+        currentX = nextX;
+        currentY = nextY;
+        playerX = currentX;
+        playerY = currentY;
+
+        playAudio('step');
+        renderGrid();
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      if (!hitObstacle && playerX === starX && playerY === starY) {
+        playAudio('win');
+        if (round >= 30) {
+          alert('🏆 Master Strategist! You completed all 30 rounds!');
+          restartGame();
+        } else {
+          round++;
+          setupRound();
+        }
+      } else {
+        playAudio('fail');
+        lives--;
+        if (lives <= 0) {
+          alert('❌ Game Over! Out of lives.');
+          restartGame();
+        } else {
+          playerX = startX;
+          playerY = startY;
+          plannedMoves = [];
+          updateUI();
+          renderGrid();
+          renderSlots();
+          isSimulating = false;
+        }
+      }
+    }
+
+    function restartGame() {
+      round = 1;
+      lives = 3;
+      setupRound();
+    }
+
+    window.onload = setupRound;
+  </script>
+</body>
+</html>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mental Navigation Map Challenge</title>
+    <style>
+        :root {
+            --bg-color: #121824;
+            --card-bg: #1e2638;
+            --text-color: #f0f4fc;
+            --accent: #ffb703;
+            --correct: #2a9d8f;
+            --incorrect: #e63946;
+            --cell-bg: #2b354a;
+            --active-border: #4cc9f0;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 16px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+
+        .game-card {
+            background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+            width: 100%; max-width: 600px; padding: 24px;
+            text-align: center; border: 2px solid #3a4763; position: relative;
+        }
+
+        .header-bar {
+            display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+        }
+
+        h1 { font-size: 22px; color: var(--accent); margin: 0; }
+        
+        .icon-btn {
+            background: #2b354a; color: #fff; border: 2px solid #4a5a7b;
+            border-radius: 50%; width: 44px; height: 44px; font-size: 20px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.1s, border-color 0.2s;
+        }
+        .icon-btn:active { transform: scale(0.95); }
+
+        p.subtitle { font-size: 14px; color: #a0aec0; margin: 0 0 16px 0; text-align: left; }
+
+        .banner {
+            background: #2b354a; border-radius: 12px; padding: 12px;
+            font-size: 16px; font-weight: bold; margin-bottom: 16px;
+            border: 2px solid var(--accent); color: var(--accent);
+        }
+
+        .controls-row {
+            display: flex; gap: 12px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex; align-items: center; gap: 8px;
+            background: #121824; padding: 8px 14px; border-radius: 12px;
+            font-size: 14px; font-weight: bold;
+        }
+
+        select {
+            background: #2b354a; color: #fff; border: 1px solid #4a5a7b;
+            padding: 6px 10px; border-radius: 8px; font-size: 14px; font-weight: bold; cursor: pointer;
+        }
+
+        /* Grids */
+        .grid-container {
+            display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; margin-bottom: 16px;
+        }
+
+        .grid-wrapper { display: flex; flex-direction: column; align-items: center; }
+        .grid-label { font-size: 14px; font-weight: bold; margin-bottom: 6px; color: #a0aec0; }
+
+        .map-grid {
+            display: grid; gap: 8px; background: #121824; padding: 12px;
+            border-radius: 16px; border: 2px solid #3a4763;
+        }
+
+        .grid-cell {
+            background: var(--cell-bg); border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 28px; cursor: pointer; border: 2px solid transparent;
+            transition: all 0.15s ease; width: 65px; height: 65px;
+        }
+
+        .grid-cell:hover { border-color: var(--active-border); }
+        .grid-cell.correct-cell { background: rgba(42, 157, 143, 0.3); border-color: var(--correct); }
+        .grid-cell.wrong-cell { background: rgba(230, 57, 70, 0.3); border-color: var(--incorrect); }
+
+        /* Landmark Palette */
+        .palette-container {
+            background: #121824; padding: 12px; border-radius: 16px;
+            margin-bottom: 16px; border: 2px solid #3a4763;
+        }
+        .palette-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #a0aec0; }
+        .palette-items { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .palette-btn {
+            background: #2b354a; border: 2px solid #4a5a7b; border-radius: 12px;
+            padding: 8px 12px; font-size: 20px; cursor: pointer; display: flex;
+            align-items: center; gap: 6px; font-weight: bold; color: #fff;
+        }
+        .palette-btn.selected { border-color: var(--accent); background: #3d4a68; transform: scale(1.05); }
+
+        /* Buttons */
+        .btn {
+            background: var(--accent); color: #121824; border: none; padding: 14px 28px;
+            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 0 #c78f00; transition: transform 0.1s; width: 100%;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: none; }
+        .btn-secondary { background: #4cc9f0; box-shadow: 0 4px 0 #0077b6; color: #121824; }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<div class="game-card">
+    <div class="header-bar">
+        <h1>🧩 Mental Navigation Map</h1>
+        <button class="icon-btn" id="mute-btn" onclick="toggleMute(event)" title="Toggle Mute/Unmute">🔊</button>
+    </div>
+    <p class="subtitle">Stimulate spatial memory & hippocampal neuroplasticity</p>
+
+    <div class="banner" id="status-banner">Select a Level and press Start to begin!</div>
+
+    <div class="controls-row" id="controls-panel">
+        <div class="control-group">
+            <label for="level-select">Difficulty:</label>
+            <select id="level-select" onchange="resetGame()">
+                <option value="1">Level 1: Micro-Layout (3x3)</option>
+                <option value="2" selected>Level 2: Neighborhood (4x4)</option>
+                <option value="3">Level 3: Town Center (5x5)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label for="timer-select">View Time:</label>
+            <select id="timer-select">
+                <option value="5">5 Seconds</option>
+                <option value="10" selected>10 Seconds</option>
+                <option value="15">15 Seconds</option>
+                <option value="0">Untimed ("I'm Ready")</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Palette for Placing Items -->
+    <div class="palette-container hidden" id="palette-container">
+        <div class="palette-title">Select a landmark below, then tap a cell on your grid to place it:</div>
+        <div class="palette-items" id="palette-items"></div>
+    </div>
+
+    <!-- Map Grid Area -->
+    <div class="grid-container">
+        <div class="grid-wrapper hidden" id="actual-map-wrapper">
+            <div class="grid-label">Actual Map (Target)</div>
+            <div class="map-grid" id="actual-grid"></div>
+        </div>
+
+        <div class="grid-wrapper" id="player-map-wrapper">
+            <div class="grid-label" id="player-grid-label">Target Map</div>
+            <div class="map-grid" id="player-grid"></div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <button class="btn" id="main-btn" onclick="handleMainAction()">Start Memory Challenge 🗺️</button>
+</div>
+
+<script>
+    // Audio Context Setup
+    let audioCtx = null;
+    let isMuted = false;
+
+    function unlockAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function toggleMute(e) {
+        if (e) e.stopPropagation();
+        unlockAudio();
+        isMuted = !isMuted;
+        document.getElementById('mute-btn').innerText = isMuted ? '🔇' : '🔊';
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.1) {
+        if (isMuted) return;
+        unlockAudio();
+        if (!audioCtx) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    function playFanfare() {
+        if (isMuted) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+            setTimeout(() => playTone(freq, 'sine', 0.25, 0.15), idx * 120);
+        });
+    }
+
+    const LANDMARKS = [
+        { id: 'home', icon: '🏡', name: 'Home' },
+        { id: 'park', icon: '🌳', name: 'Park' },
+        { id: 'bakery', icon: '🥐', name: 'Bakery' },
+        { id: 'fountain', icon: '⛲', name: 'Fountain' },
+        { id: 'library', icon: '📚', name: 'Library' },
+        { id: 'cafe', icon: '☕', name: 'Cafe' },
+        { id: 'store', icon: '🛒', name: 'Store' },
+        { id: 'hospital', icon: '🏥', name: 'Clinic' }
+    ];
+
+    let gameState = 'IDLE'; 
+    let gridSize = 4;
+    let targetMap = [];
+    let playerMap = [];
+    let selectedLandmark = null;
+    let countdownInterval = null;
+
+    function getLevelConfig() {
+        const lvl = parseInt(document.getElementById('level-select').value);
+        if (lvl === 1) return { size: 3, itemsCount: 3 };
+        if (lvl === 2) return { size: 4, itemsCount: 4 };
+        return { size: 5, itemsCount: 6 };
+    }
+
+    function generateRandomMap() {
+        const config = getLevelConfig();
+        gridSize = config.size;
+        const totalCells = gridSize * gridSize;
+        targetMap = Array(totalCells).fill(null);
+        playerMap = Array(totalCells).fill(null);
+
+        const shuffledLandmarks = [...LANDMARKS].sort(() => 0.5 - Math.random()).slice(0, config.itemsCount);
+        const availablePositions = Array.from({length: totalCells}, (_, i) => i).sort(() => 0.5 - Math.random());
+
+        shuffledLandmarks.forEach((item, index) => {
+            const pos = availablePositions[index];
+            targetMap[pos] = item;
+        });
+    }
+
+    function renderGrid(containerId, mapData, isInteractive = false, comparisonMap = null) {
+        const container = document.getElementById(containerId);
+        container.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+        container.innerHTML = '';
+
+        mapData.forEach((item, index) => {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            
+            if (gridSize === 5) {
+                cell.style.width = '48px';
+                cell.style.height = '48px';
+                cell.style.fontSize = '22px';
+            } else if (gridSize === 3) {
+                cell.style.width = '75px';
+                cell.style.height = '75px';
+                cell.style.fontSize = '32px';
+            }
+
+            cell.innerText = item ? item.icon : '';
+
+            if (comparisonMap) {
+                const targetItem = comparisonMap[index];
+                if (targetItem && item && targetItem.id === item.id) {
+                    cell.classList.add('correct-cell');
+                } else if (item || targetItem) {
+                    cell.classList.add('wrong-cell');
+                }
+            }
+
+            if (isInteractive) {
+                cell.onclick = () => placeLandmark(index);
+            }
+
+            container.appendChild(cell);
+        });
+    }
+
+    function renderPalette() {
+        const paletteContainer = document.getElementById('palette-items');
+        paletteContainer.innerHTML = '';
+
+        const activeLandmarks = targetMap.filter(item => item !== null);
+        
+        const eraserBtn = document.createElement('button');
+        eraserBtn.className = 'palette-btn';
+        eraserBtn.innerHTML = `❌ Clear`;
+        eraserBtn.onclick = () => selectPaletteItem(null, eraserBtn);
+        paletteContainer.appendChild(eraserBtn);
+
+        activeLandmarks.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'palette-btn';
+            btn.innerHTML = `${item.icon} ${item.name}`;
+            btn.onclick = () => selectPaletteItem(item, btn);
+            paletteContainer.appendChild(btn);
+        });
+
+        if (activeLandmarks.length > 0) {
+            selectPaletteItem(activeLandmarks[0], paletteContainer.children[1]);
+        }
+    }
+
+    function selectPaletteItem(item, buttonEl) {
+        selectedLandmark = item;
+        playTone(450, 'sine', 0.08, 0.08);
+        document.querySelectorAll('.palette-btn').forEach(b => b.classList.remove('selected'));
+        if (buttonEl) buttonEl.classList.add('selected');
+    }
+
+    function placeLandmark(index) {
+        if (gameState !== 'RECONSTRUCT') return;
+        playerMap[index] = selectedLandmark;
+        playTone(selectedLandmark ? 600 : 300, 'triangle', 0.1, 0.1);
+        renderGrid('player-grid', playerMap, true);
+    }
+
+    function handleMainAction() {
+        playTone(520, 'sine', 0.12, 0.1);
+        if (gameState === 'IDLE' || gameState === 'VERIFY') {
+            startMemorizePhase();
+        } else if (gameState === 'MEMORIZE') {
+            startReconstructPhase();
+        } else if (gameState === 'RECONSTRUCT') {
+            startVerifyPhase();
+        }
+    }
+
+    function startMemorizePhase() {
+        gameState = 'MEMORIZE';
+        generateRandomMap();
+
+        document.getElementById('controls-panel').classList.add('hidden');
+        document.getElementById('palette-container').classList.add('hidden');
+        document.getElementById('actual-map-wrapper').classList.add('hidden');
+        
+        document.getElementById('player-grid-label').innerText = "Target Map";
+        renderGrid('player-grid', targetMap, false);
+
+        const viewTime = parseInt(document.getElementById('timer-select').value);
+        const mainBtn = document.getElementById('main-btn');
+
+        if (viewTime > 0) {
+            let timeLeft = viewTime;
+            document.getElementById('status-banner').innerText = `🧠 Memorize the map! Time remaining: ${timeLeft}s`;
+            mainBtn.innerText = "I'm Ready Now! 👁️";
+            mainBtn.className = "btn btn-secondary";
+
+            clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    document.getElementById('status-banner').innerText = `🧠 Memorize the map! Time remaining: ${timeLeft}s`;
+                    playTone(400, 'sine', 0.05, 0.03);
+                } else {
+                    clearInterval(countdownInterval);
+                    startReconstructPhase();
+                }
+            }, 1000);
+        } else {
+            document.getElementById('status-banner').innerText = "🧠 Take your time to study and memorize the landmark locations.";
+            mainBtn.innerText = "I've Memorized It! ✍️";
+            mainBtn.className = "btn";
+        }
+    }
+
+    function startReconstructPhase() {
+        clearInterval(countdownInterval);
+        gameState = 'RECONSTRUCT';
+
+        playTone(700, 'sine', 0.15, 0.12);
+        document.getElementById('status-banner').innerText = "✍️ Reconstruct the map from memory! Tap a landmark, then tap a cell.";
+        document.getElementById('player-grid-label').innerText = "Your Memory Map";
+        
+        renderPalette();
+        document.getElementById('palette-container').classList.remove('hidden');
+        
+        renderGrid('player-grid', playerMap, true);
+
+        const mainBtn = document.getElementById('main-btn');
+        mainBtn.innerText = "Check My Map 🔍";
+        mainBtn.className = "btn";
+    }
+
+    function startVerifyPhase() {
+        gameState = 'VERIFY';
+
+        document.getElementById('palette-container').classList.add('hidden');
+        document.getElementById('actual-map-wrapper').classList.remove('hidden');
+
+        renderGrid('actual-grid', targetMap, false);
+
+        let totalLandmarks = targetMap.filter(x => x !== null).length;
+        let correctMatches = 0;
+
+        targetMap.forEach((targetItem, idx) => {
+            if (targetItem && playerMap[idx] && targetItem.id === playerMap[idx].id) {
+                correctMatches++;
+            }
+        });
+
+        const accuracy = Math.round((correctMatches / totalLandmarks) * 100);
+
+        document.getElementById('player-grid-label').innerText = "Your Memory Results";
+        renderGrid('player-grid', playerMap, false, targetMap);
+
+        let resultMsg = "";
+        if (accuracy === 100) {
+            resultMsg = `🏆 Perfect Spatial Memory! 100% Accuracy!`;
+            playFanfare();
+        } else if (accuracy >= 60) {
+            resultMsg = `🌟 Great Job! ${accuracy}% Accuracy. High Hippocampal Activity!`;
+            playTone(650, 'sine', 0.2, 0.12);
+        } else {
+            resultMsg = `💪 Good Exercise! ${accuracy}% Accuracy. Practice strengthens neural pathways!`;
+            playTone(350, 'sawtooth', 0.25, 0.08);
+        }
+
+        document.getElementById('status-banner').innerText = resultMsg;
+
+        const mainBtn = document.getElementById('main-btn');
+        mainBtn.innerText = "Play Again 🔄";
+        mainBtn.className = "btn";
+        document.getElementById('controls-panel').classList.remove('hidden');
+    }
+
+    function resetGame() {
+        clearInterval(countdownInterval);
+        gameState = 'IDLE';
+        document.getElementById('status-banner').innerText = "Select a Level and press Start to begin!";
+        document.getElementById('controls-panel').classList.remove('hidden');
+        document.getElementById('palette-container').classList.add('hidden');
+        document.getElementById('actual-map-wrapper').classList.add('hidden');
+        document.getElementById('player-grid-label').innerText = "Map Grid";
+        
+        generateRandomMap();
+        renderGrid('player-grid', Array(gridSize * gridSize).fill(null), false);
+
+        const mainBtn = document.getElementById('main-btn');
+        mainBtn.innerText = "Start Memory Challenge 🗺️";
+        mainBtn.className = "btn";
+    }
+
+    resetGame();
+</script>
+
+</body>
+</html>

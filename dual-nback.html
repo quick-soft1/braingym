@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dual N-Back Focus Sprint</title>
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --card-bg: #2b2b3d;
+            --text-color: #cdd6f4;
+            --tile-bg: #313244;
+            --accent: #cba6f7;
+            --visual-color: #89b4fa;
+            --audio-color: #a6e3a1;
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color); color: var(--text-color);
+            margin: 0; padding: 16px;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+        }
+        .game-card {
+            background: var(--card-bg); border-radius: 24px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.4);
+            width: 100%; max-width: 520px; padding: 24px;
+            text-align: center; border: 2px solid #45475a; position: relative;
+        }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        h1 { font-size: 20px; margin: 0; color: var(--accent); }
+        .header-btns { display: flex; gap: 8px; }
+        .icon-btn {
+            background: #f38ba8; color: #11111b; border: none; border-radius: 50%;
+            width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+            font-weight: bold; display: flex; align-items: center; justify-content: center;
+        }
+
+        .status-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #181825; padding: 10px 16px; border-radius: 12px;
+            font-weight: bold; margin-bottom: 12px; font-size: 14px;
+        }
+        
+        .level-banner {
+            background: #fab387; color: #11111b; font-weight: bold;
+            padding: 8px; border-radius: 8px; margin-bottom: 12px; font-size: 13px;
+        }
+
+        .controls-row {
+            display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex; align-items: center; gap: 6px;
+            background: #181825; padding: 6px 12px; border-radius: 10px;
+            font-size: 12px; font-weight: bold;
+        }
+        .select-input {
+            background: #313244; color: #cdd6f4; border: 1px solid #45475a;
+            border-radius: 6px; padding: 4px 6px; font-size: 12px; font-weight: bold;
+            cursor: pointer; outline: none;
+        }
+
+        /* 3x3 Grid Board */
+        .board-container {
+            display: flex; justify-content: center; margin-bottom: 16px;
+        }
+        .grid-board {
+            display: grid; grid-template-columns: repeat(3, 85px); grid-template-rows: repeat(3, 85px);
+            gap: 10px; background: #181825; padding: 12px; border-radius: 20px; border: 2px solid #45475a;
+        }
+        .grid-cell {
+            background: var(--tile-bg); border-radius: 14px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 28px; position: relative; transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+        }
+        .grid-cell.active-stimulus {
+            background: var(--visual-color);
+            box-shadow: 0 0 20px var(--visual-color);
+            transform: scale(0.96);
+        }
+
+        .sound-indicator {
+            font-size: 16px; font-weight: bold; color: var(--audio-color);
+            margin-bottom: 16px; min-height: 28px; display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: #181825; padding: 6px; border-radius: 10px;
+        }
+        .letter-badge {
+            background: #a6e3a1; color: #11111b; padding: 2px 10px; border-radius: 6px; font-size: 18px; font-weight: 900;
+        }
+
+        /* Dual Match Buttons */
+        .match-btns-container {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+        }
+        .match-btn {
+            padding: 16px; border-radius: 16px; border: 2px solid #45475a;
+            background: #313244; color: #cdd6f4; font-size: 15px; font-weight: 800;
+            cursor: pointer; transition: transform 0.1s, background 0.2s, border-color 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 4px;
+        }
+        .match-btn.visual { border-color: var(--visual-color); }
+        .match-btn.audio { border-color: var(--audio-color); }
+        .match-btn:active, .match-btn.pressed { transform: scale(0.95); }
+        .match-btn.visual.pressed { background: rgba(137, 180, 250, 0.3); }
+        .match-btn.audio.pressed { background: rgba(166, 227, 161, 0.3); }
+
+        .key-hint { font-size: 11px; opacity: 0.7; font-weight: normal; }
+
+        .btn-primary {
+            background: #a6e3a1; color: #11111b; border: none; padding: 14px 32px;
+            border-radius: 50px; font-size: 18px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 0px #74c7ec; width: 100%;
+        }
+
+        .modal {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 17, 27, 0.95); border-radius: 24px; padding: 20px;
+            z-index: 100; flex-direction: column; justify-content: space-between; text-align: left;
+        }
+        .modal.active { display: flex; }
+        .modal h2 { color: #89b4fa; margin-top: 0; text-align: center; }
+        .modal-body { font-size: 13px; line-height: 1.5; color: #cdd6f4; }
+        .close-btn {
+            background: #f38ba8; color: #11111b; border: none; padding: 12px;
+            border-radius: 12px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px;
+        }
+    </style>
+</head>
+<body onclick="unlockAudio()">
+
+<div class="game-card">
+    <div class="header-bar">
+        <h1>🧠 Dual N-Back</h1>
+        <div class="header-btns">
+            <button class="icon-btn" onclick="toggleModal('rules-modal', true)" style="background:#89b4fa;">📖</button>
+            <button class="icon-btn" onclick="toggleAudio(event)" id="sound-toggle">🔊</button>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span id="trial-text">⭐ Trial: 0/20</span>
+        <span id="score-text">Accuracy: 100%</span>
+        <span id="n-level-text">2-Back</span>
+    </div>
+
+    <div class="level-banner" id="level-banner">Match position or sound to 2 turns ago!</div>
+
+    <div class="controls-row">
+        <div class="control-group">
+            <span>N-Back:</span>
+            <select id="n-select" class="select-input" onchange="userSettingChange()">
+                <option value="1">1-Back (Easy)</option>
+                <option value="2" selected>2-Back (Standard)</option>
+                <option value="3">3-Back (Pro)</option>
+                <option value="4">4-Back (Master)</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <span>Speed:</span>
+            <select id="speed-select" class="select-input" onchange="userSettingChange()">
+                <option value="3000">3.0s (Relaxed)</option>
+                <option value="2500" selected>2.5s (Normal)</option>
+                <option value="2000">2.0s (Fast)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="board-container">
+        <div class="grid-board" id="grid-board"></div>
+    </div>
+
+    <div class="sound-indicator" id="sound-indicator">
+        🎧 Sound/Letter: <span id="sound-status" class="letter-badge">-</span>
+    </div>
+
+    <div class="match-btns-container">
+        <button id="visual-btn" class="match-btn visual" onclick="triggerVisualMatch()">
+            <span>👁️ Position Match</span>
+            <span class="key-hint">(Press 'A' or Left)</span>
+        </button>
+        <button id="audio-btn" class="match-btn audio" onclick="triggerAudioMatch()">
+            <span>🎧 Sound Match</span>
+            <span class="key-hint">(Press 'L' or Right)</span>
+        </button>
+    </div>
+
+    <button class="btn-primary" id="start-btn" onclick="toggleGame()">Start Focus Sprint 🚀</button>
+
+    <div class="modal" id="rules-modal">
+        <div>
+            <h2>📖 How Dual N-Back Works</h2>
+            <div class="modal-body">
+                <p><strong>🎯 Objective:</strong> Simultaneously track visual tile positions and letter sounds!</p>
+                <p><strong>🧠 2-Back Rule Example:</strong></p>
+                <ul>
+                    <li>If current blue tile is in the same spot as <strong>2 turns ago</strong> ➔ Press <strong>Position Match</strong>.</li>
+                    <li>If current letter sound matches the letter from <strong>2 turns ago</strong> ➔ Press <strong>Sound Match</strong>.</li>
+                    <li>If BOTH match ➔ Press BOTH!</li>
+                </ul>
+            </div>
+        </div>
+        <button class="close-btn" onclick="toggleModal('rules-modal', false)">Got It! 👍</button>
+    </div>
+</div>
+
+<script>
+    let audioCtx = null, isMuted = false;
+    const LETTERS = ['B', 'C', 'D', 'F', 'H', 'J', 'M', 'Q', 'R', 'T'];
+
+    let isPlaying = false;
+    let trialIndex = 0;
+    const TOTAL_TRIALS = 20;
+
+    let currentN = 2;
+    let stepIntervalMs = 2500;
+    let trialTimer = null;
+
+    let history = [];
+    let userVisualPressed = false;
+    let userAudioPressed = false;
+
+    let totalMatchChecks = 0;
+    let correctResponses = 0;
+
+    function unlockAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function toggleAudio(e) {
+        if (e) e.stopPropagation();
+        unlockAudio();
+        isMuted = !isMuted;
+        document.getElementById('sound-toggle').innerText = isMuted ? '🔇' : '🔊';
+    }
+
+    function toggleModal(id, show) {
+        document.getElementById(id).classList.toggle('active', show);
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15) {
+        if (isMuted) return;
+        unlockAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    function speakLetter(letter) {
+        if (isMuted) return;
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(letter);
+            utter.rate = 1.2;
+            window.speechSynthesis.speak(utter);
+        } else {
+            playTone(400, 'triangle', 0.2);
+        }
+    }
+
+    function createBoard() {
+        const board = document.getElementById('grid-board');
+        board.innerHTML = '';
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.id = `cell-${i}`;
+            board.appendChild(cell);
+        }
+    }
+
+    function applySettings() {
+        currentN = parseInt(document.getElementById('n-select').value);
+        stepIntervalMs = parseInt(document.getElementById('speed-select').value);
+        document.getElementById('n-level-text').innerText = `${currentN}-Back`;
+        document.getElementById('level-banner').innerText = `Match position or sound to ${currentN} step${currentN > 1 ? 's' : ''} ago!`;
+    }
+
+    function userSettingChange() {
+        applySettings();
+        if (isPlaying) stopGame();
+    }
+
+    function triggerVisualMatch() {
+        if (!isPlaying) return;
+        userVisualPressed = true;
+        document.getElementById('visual-btn').classList.add('pressed');
+        playTone(500, 'sine', 0.08);
+    }
+
+    function triggerAudioMatch() {
+        if (!isPlaying) return;
+        userAudioPressed = true;
+        document.getElementById('audio-btn').classList.add('pressed');
+        playTone(600, 'sine', 0.08);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') triggerVisualMatch();
+        if (e.key === 'l' || e.key === 'L' || e.key === 'ArrowRight') triggerAudioMatch();
+    });
+
+    function toggleGame() {
+        unlockAudio();
+        if (isPlaying) stopGame();
+        else startGame();
+    }
+
+    function startGame() {
+        stopGame();
+        isPlaying = true;
+        trialIndex = 0;
+        history = [];
+        totalMatchChecks = 0;
+        correctResponses = 0;
+
+        applySettings();
+
+        document.getElementById('start-btn').innerText = "Stop Sprint 🛑";
+        document.getElementById('start-btn').style.background = "#f38ba8";
+        document.getElementById('score-text').innerText = "Accuracy: 100%";
+        
+        runTrialStep();
+    }
+
+    function stopGame() {
+        isPlaying = false;
+        if (trialTimer) clearTimeout(trialTimer);
+        document.getElementById('start-btn').innerText = "Start Focus Sprint 🚀";
+        document.getElementById('start-btn').style.background = "#a6e3a1";
+        clearGridHighlight();
+        document.getElementById('sound-status').innerText = "-";
+    }
+
+    function clearGridHighlight() {
+        for (let i = 0; i < 9; i++) {
+            const cell = document.getElementById(`cell-${i}`);
+            if (cell) cell.classList.remove('active-stimulus');
+        }
+        document.getElementById('visual-btn').classList.remove('pressed');
+        document.getElementById('audio-btn').classList.remove('pressed');
+    }
+
+    function evaluatePreviousStep() {
+        if (history.length <= currentN) return;
+
+        const currIdx = history.length - 1;
+        const targetIdx = currIdx - currentN;
+
+        const isVisualMatch = history[currIdx].pos === history[targetIdx].pos;
+        const isAudioMatch = history[currIdx].letter === history[targetIdx].letter;
+
+        totalMatchChecks += 2;
+
+        if ((isVisualMatch && userVisualPressed) || (!isVisualMatch && !userVisualPressed)) correctResponses++;
+        if ((isAudioMatch && userAudioPressed) || (!isAudioMatch && !userAudioPressed)) correctResponses++;
+
+        const accuracy = Math.round((correctResponses / totalMatchChecks) * 100);
+        document.getElementById('score-text').innerText = `Accuracy: ${accuracy}%`;
+    }
+
+    function runTrialStep() {
+        if (!isPlaying) return;
+
+        evaluatePreviousStep();
+
+        if (trialIndex >= TOTAL_TRIALS) {
+            endRound();
+            return;
+        }
+
+        trialIndex++;
+        document.getElementById('trial-text').innerText = `⭐ Trial: ${trialIndex}/${TOTAL_TRIALS}`;
+
+        userVisualPressed = false;
+        userAudioPressed = false;
+        clearGridHighlight();
+
+        let nextPos = Math.floor(Math.random() * 9);
+        let nextLetter = LETTERS[Math.floor(Math.random() * LETTERS.length)];
+
+        if (history.length >= currentN) {
+            const target = history[history.length - currentN];
+            if (Math.random() < 0.35) nextPos = target.pos;
+            if (Math.random() < 0.35) nextLetter = target.letter;
+        }
+
+        history.push({ pos: nextPos, letter: nextLetter });
+
+        const targetCell = document.getElementById(`cell-${nextPos}`);
+        if (targetCell) targetCell.classList.add('active-stimulus');
+
+        document.getElementById('sound-status').innerText = nextLetter;
+        speakLetter(nextLetter);
+
+        setTimeout(clearGridHighlight, Math.min(800, stepIntervalMs * 0.4));
+
+        trialTimer = setTimeout(runTrialStep, stepIntervalMs);
+    }
+
+    function endRound() {
+        stopGame();
+        const finalAccuracy = totalMatchChecks > 0 ? Math.round((correctResponses / totalMatchChecks) * 100) : 100;
+        document.getElementById('level-banner').innerText = `🏆 Sprint Finished! Final Accuracy: ${finalAccuracy}%`;
+        playTone(700, 'sine', 0.3);
+    }
+
+    createBoard();
+</script>
+
+</body>
+</html>
